@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { CareerOption, RoadmapPhase, NewsItem, RoadmapItem, SkillQuestion, DailyQuizItem, InterviewQuestion, PracticeQuestion, SimulationScenario, ChatMessage } from '../types';
 
@@ -193,7 +194,7 @@ export const generateRoadmap = async (
     expLevel: string,
     focusAreas: string,
     adaptationContext?: { 
-        type: 'compress_schedule' | 'simplify_schedule' | 'redistribute' | 'append_content' | 'increase_difficulty_same_time' | 'maintain_pressure' | 'reduce_difficulty' | 'accelerate_pace',
+        type: 'increase_difficulty' | 'relax_pace' | 'challenge_me' | 'reduce_difficulty_and_scope' | 'increase_difficulty_same_time' | 'maintain_pressure' | 'accelerate_pace',
         progressStr?: string,
         startingPhaseNumber?: number
     }
@@ -213,13 +214,12 @@ export const generateRoadmap = async (
            Context: ${adaptationContext.progressStr}.
            Start generating phases from Phase ${adaptationContext.startingPhaseNumber || 1}.
            Logic for '${adaptationContext.type}':
+           - increase_difficulty: User has extended their deadline. Keep all existing future tasks and add NEW, more advanced tasks to fill the extra time.
+           - relax_pace: User has extended their deadline. Take all existing future tasks and redistribute them evenly over the new, longer timeline. Do not add new tasks.
+           - challenge_me: User has shortened their deadline. Take all existing future tasks and compress them into the new, shorter timeline. This increases daily intensity.
+           - reduce_difficulty_and_scope: User has shortened their deadline. Regenerate a simpler future roadmap with fewer or easier tasks that still covers the basics to fit the shorter time.
            - maintain_pressure: Keep timeline fixed, but optimize tasks for efficiency to catch up.
-           - reduce_difficulty: Reduce task complexity/volume to ensure completion by deadline.
-           - accelerate_pace: Compress the remaining roadmap into a shorter timeline (High intensity).
-           - compress_schedule: Same content, shorter time (High intensity).
-           - simplify_schedule: Remove advanced/optional topics to fit time.
-           - redistribute: Spread content evenly over new (longer) duration.
-           - append_content: Add advanced/specialized modules at the end.`
+           - accelerate_pace: Compress the remaining roadmap into a shorter timeline (High intensity).`
         : '';
 
     const prompt = `

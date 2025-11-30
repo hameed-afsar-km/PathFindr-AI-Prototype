@@ -1,10 +1,12 @@
 
+
 import React, { useEffect, useState, useRef } from 'react';
 import { UserProfile, CareerOption, RoadmapPhase, NewsItem, RoadmapItem, DailyQuizItem, InterviewQuestion, PracticeQuestion, SimulationScenario, ChatMessage } from '../types';
 import { Roadmap } from './Roadmap';
 import { fetchTechNews, generateRoadmap, calculateRemainingDays, generateDailyQuiz, generatePracticeTopics, generatePracticeQuestions, generateCompanyInterviewQuestions, generateSimulationScenario, generateChatResponse } from '../services/gemini';
 import { saveRoadmap, saveUser, getRoadmap, getCareerData, saveCareerData, setCurrentUser, getNewsCache, saveNewsCache, getDailyQuizCache, saveDailyQuizCache, deleteUser, getPracticeData, savePracticeData } from '../services/store';
-import { Home, Map, Briefcase, User, LogOut, TrendingUp, PlusCircle, ChevronDown, ChevronUp, Clock, Trophy, AlertCircle, Target, Trash2, RotateCcw, PartyPopper, ArrowRight, Zap, Calendar, ExternalLink, X, RefreshCw, MessageSquare, CheckCircle2, Pencil, BrainCircuit, GraduationCap, Flame, Star, Search, Link, Building2, PlayCircle, Eye, EyeOff, ShieldAlert, Palette, Settings, Mail, Lock, CalendarDays, AlertTriangle, Moon, Sun, Send, Cpu, Sparkles } from 'lucide-react';
+// FIX: Import 'Compass' icon to resolve reference error.
+import { Home, Map, Briefcase, User, LogOut, TrendingUp, PlusCircle, ChevronDown, ChevronUp, Clock, Trophy, AlertCircle, Target, Trash2, RotateCcw, PartyPopper, ArrowRight, Zap, Calendar, ExternalLink, X, RefreshCw, MessageSquare, CheckCircle2, Pencil, BrainCircuit, GraduationCap, Flame, Star, Search, Link, Building2, PlayCircle, Eye, EyeOff, ShieldAlert, Palette, Settings, Mail, Lock, CalendarDays, AlertTriangle, Moon, Sun, Send, Cpu, Sparkles, Compass } from 'lucide-react';
 
 interface DashboardProps {
   user: UserProfile;
@@ -23,6 +25,7 @@ interface QuizOptionProps {
   index: number;
   correctIndex: number;
   explanation: string;
+  key: string;
 }
 
 const QuizOption: React.FC<QuizOptionProps> = ({ option, index, correctIndex, explanation }) => {
@@ -222,16 +225,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Adaptation State
-  const [showAdaptationModal, setShowAdaptationModal] = useState<'early' | 'late' | null>(null);
   const [isAdapting, setIsAdapting] = useState(false);
-  const [adaptationMessage, setAdaptationMessage] = useState('');
 
   // Phase Completion State
   const [showPhaseCompletionModal, setShowPhaseCompletionModal] = useState(false);
-  const [justCompletedPhaseIndex, setJustCompletedPhaseIndex] = useState<number | null>(null);
-
+  
   // Date Edit State
-  const [showDateEdit, setShowDateEdit] = useState(false);
+  const [showDateEditModal, setShowDateEditModal] = useState(false);
   const [pendingTargetDate, setPendingTargetDate] = useState('');
   const [showDateStrategyModal, setShowDateStrategyModal] = useState(false);
   const [dateStrategyType, setDateStrategyType] = useState<'extension' | 'shortening' | null>(null);
@@ -334,7 +334,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     } else {
         setProgress(0);
     }
-  }, [roadmap]);
+  }, [roadmap, progress]);
 
   useEffect(() => {
       if (activeTab === 'career') {
@@ -632,7 +632,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
         const isAllCompleted = newRoadmap.every(p => p.items.every(i => i.status === 'completed'));
 
         if (isNowCompleted && !wasPhaseCompleted && !isAllCompleted) {
-            setJustCompletedPhaseIndex(phaseIndexToCheck);
             setShowPhaseCompletionModal(true);
         }
     }
@@ -698,32 +697,38 @@ export const Dashboard: React.FC<DashboardProps> = ({
           const { educationYear, targetCompletionDate, experienceLevel, focusAreas } = currentCareerDetails;
           let targetDateToUse = customTargetDate || targetCompletionDate;
 
+          // If date changed, update user profile
           if (targetDateToUse !== targetCompletionDate) {
-              const updatedCareers = user.activeCareers.map(c => 
-                  c.careerId === career.id ? { ...c, targetCompletionDate: targetDateToUse } : c
-              );
-              const u = { ...user, activeCareers: updatedCareers };
-              setUser(u);
-              saveUser(u);
+              handleDateUpdateWithoutAI(targetDateToUse);
           }
 
           const contextStr = `User has completed ${completedPhases.length} phases. Proceed to generate the REMAINING phases starting from Phase ${lastCompletedPhaseIndex + 1}.`;
-          const newPhases = await generateRoadmap(career.title, educationYear, targetDateToUse, experienceLevel, focusAreas, { type, progressStr: contextStr, startingPhaseNumber: lastCompletedPhaseIndex + 1 });
+          const newPhases = await generateRoadmap(career.title, educationYear, targetDateToUse, experienceLevel, focusAreas || '', { type, progressStr: contextStr, startingPhaseNumber: lastCompletedPhaseIndex + 1 });
           const finalMap = [...completedPhases, ...newPhases];
           setRoadmap(finalMap);
           saveRoadmap(user.id, career.id, finalMap);
           
-          setShowAdaptationModal(null);
           setShowDateStrategyModal(false);
-          setShowDateEdit(false);
           setShowPhaseCompletionModal(false);
-          showToastMsg("Roadmap adapted successfully.");
+          showToastMsg("Roadmap adapted by Nova.");
       } catch (e) {
           console.error("Adaptation failed", e);
           showToastMsg("AI busy. Please try again later.");
       } finally {
           setIsAdapting(false);
       }
+  };
+
+  const handleDateUpdateWithoutAI = (newDate: string) => {
+      if (!currentCareerDetails) return;
+      const updatedCareers = user.activeCareers.map(c => 
+          c.careerId === career.id ? { ...c, targetCompletionDate: newDate } : c
+      );
+      const updatedUser = { ...user, activeCareers: updatedCareers };
+      setUser(updatedUser);
+      saveUser(updatedUser);
+      setShowDateStrategyModal(false);
+      showToastMsg("Target date updated.");
   };
   
   const handleFinishQuicker = () => {
@@ -754,7 +759,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       const newDateParts = pendingTargetDate.split('-');
       const newDate = new Date(parseInt(newDateParts[0]), parseInt(newDateParts[1]) - 1, parseInt(newDateParts[2])).getTime();
       
-      setShowDateEdit(false);
+      setShowDateEditModal(false);
       setShowDateStrategyModal(true);
       setDateStrategyType(newDate > oldDate ? 'extension' : 'shortening');
   };
@@ -862,7 +867,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
   const pacing = getPacingStatus();
 
-  // Modal Components omitted for brevity but assumed present
+  // --- MODAL COMPONENTS ---
+
   const CelebrationModal = () => (
       <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
           <div className="bg-slate-900 border border-indigo-500 rounded-3xl p-8 max-w-md w-full text-center relative overflow-hidden shadow-[0_0_50px_rgba(99,102,241,0.3)]">
@@ -901,9 +907,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             <button onClick={() => handleAdaptation('reduce_difficulty')} className="w-full p-4 bg-slate-800 hover:bg-emerald-900/20 border border-slate-700 hover:border-emerald-500 rounded-xl transition-all flex items-center justify-between group">
                                 <div><div className="font-bold text-white mb-1">Reduce Difficulty</div><div className="text-xs text-slate-400">Simplify remaining tasks to catch up.</div></div><ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-emerald-400" />
                             </button>
-                            <button onClick={() => handleAdaptation('simplify_schedule')} className="w-full p-4 bg-slate-800 hover:bg-purple-900/20 border border-slate-700 hover:border-purple-500 rounded-xl transition-all flex items-center justify-between group">
-                                <div><div className="font-bold text-white mb-1">Prioritize Basics</div><div className="text-xs text-slate-400">Cut non-essentials to finish on time.</div></div><ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-purple-400" />
-                            </button>
                           </>
                       )}
                       {pacing.status !== 'behind' && (
@@ -938,40 +941,65 @@ export const Dashboard: React.FC<DashboardProps> = ({
       </div>
   );
 
+  const DateEditModal = () => (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-md w-full relative shadow-2xl">
+              <button onClick={() => setShowDateEditModal(false)} className="absolute top-4 right-4 p-2 text-slate-500 hover:text-white"><X className="h-5 w-5"/></button>
+              <h2 className="text-2xl font-bold text-white mb-4">Update Target Date</h2>
+              <p className="text-slate-400 text-sm mb-6">Select a new completion date for your roadmap.</p>
+              <input 
+                type="date" 
+                className="w-full p-4 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-indigo-500 outline-none color-scheme-dark mb-6"
+                value={pendingTargetDate}
+                onChange={e => setPendingTargetDate(e.target.value)}
+              />
+              <button onClick={initiateDateUpdate} disabled={!pendingTargetDate} className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all disabled:opacity-50">
+                  Confirm Date & Adapt
+              </button>
+          </div>
+      </div>
+  );
+
   const DateStrategyModal = () => (
-      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+      <div className="fixed inset-0 z-[101] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-fade-in">
           <div className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-lg w-full text-center shadow-2xl">
               <h2 className="text-2xl font-bold text-white mb-2">{dateStrategyType === 'extension' ? "Target Date Extended" : "Timeline Shortened"}</h2>
-              <p className="text-slate-300 mb-6">{dateStrategyType === 'extension' ? "You have more time. How should Nova adapt?" : "You have less time. How should Nova adapt?"}</p>
+              <p className="text-slate-300 mb-8">{dateStrategyType === 'extension' ? "You have more time. How should Nova adapt?" : "You have less time. How should Nova adapt?"}</p>
               {isAdapting ? (
                     <div className="py-8 flex flex-col items-center gap-4">
                          <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full"></div>
                          <span className="text-indigo-400 font-medium">Nova is updating roadmap...</span>
                     </div>
               ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-3 text-left">
                       {dateStrategyType === 'extension' ? (
                           <>
-                              <button onClick={() => handleAdaptation('redistribute', pendingTargetDate)} className="w-full p-4 bg-slate-800 hover:bg-blue-900/20 border border-slate-700 hover:border-blue-500 rounded-xl transition-all text-left flex items-center justify-between group">
-                                  <div><div className="font-bold text-white mb-1">Redistribute (Relax Pace)</div><div className="text-xs text-slate-400">Spread existing tasks.</div></div><ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-blue-400" />
+                              <button onClick={() => handleAdaptation('increase_difficulty', pendingTargetDate)} className="w-full p-4 bg-slate-800 hover:bg-purple-900/20 border border-slate-700 hover:border-purple-500 rounded-xl transition-all flex items-center justify-between group">
+                                  <div><div className="font-bold text-white mb-1">Increase Difficulty</div><div className="text-xs text-slate-400">Add new advanced tasks to fill extra days.</div></div><ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-purple-400" />
                               </button>
-                              <button onClick={() => handleAdaptation('append_content', pendingTargetDate)} className="w-full p-4 bg-slate-800 hover:bg-emerald-900/20 border border-slate-700 hover:border-emerald-500 rounded-xl transition-all text-left flex items-center justify-between group">
-                                  <div><div className="font-bold text-white mb-1">Append Difficulty</div><div className="text-xs text-slate-400">Add advanced content at the end.</div></div><ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-emerald-400" />
+                              <button onClick={() => handleAdaptation('relax_pace', pendingTargetDate)} className="w-full p-4 bg-slate-800 hover:bg-blue-900/20 border border-slate-700 hover:border-blue-500 rounded-xl transition-all flex items-center justify-between group">
+                                  <div><div className="font-bold text-white mb-1">Relax Pace</div><div className="text-xs text-slate-400">Redistribute existing tasks over more time.</div></div><ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-blue-400" />
+                              </button>
+                              <button onClick={() => handleDateUpdateWithoutAI(pendingTargetDate)} className="w-full p-4 bg-slate-800 hover:bg-emerald-900/20 border border-slate-700 hover:border-emerald-500 rounded-xl transition-all flex items-center justify-between group">
+                                  <div><div className="font-bold text-white mb-1">Keep It Free</div><div className="text-xs text-slate-400">Just update the date. No roadmap changes.</div></div><ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-emerald-400" />
                               </button>
                           </>
                       ) : (
                           <>
-                              <button onClick={() => handleAdaptation('compress_schedule', pendingTargetDate)} className="w-full p-4 bg-slate-800 hover:bg-orange-900/20 border border-slate-700 hover:border-orange-500 rounded-xl transition-all text-left flex items-center justify-between group">
-                                  <div><div className="font-bold text-white mb-1">Increase Pressure</div><div className="text-xs text-slate-400">Compress tasks to fit. Harder pace.</div></div><ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-orange-400" />
+                              <button onClick={() => handleAdaptation('challenge_me', pendingTargetDate)} className="w-full p-4 bg-slate-800 hover:bg-orange-900/20 border border-slate-700 hover:border-orange-500 rounded-xl transition-all text-left flex items-center justify-between group">
+                                  <div><div className="font-bold text-white mb-1">Challenge Me</div><div className="text-xs text-slate-400">Compress tasks to fit. Harder pace.</div></div><ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-orange-400" />
                               </button>
-                              <button onClick={() => handleAdaptation('simplify_schedule', pendingTargetDate)} className="w-full p-4 bg-slate-800 hover:bg-blue-900/20 border border-slate-700 hover:border-blue-500 rounded-xl transition-all text-left flex items-center justify-between group">
-                                  <div><div className="font-bold text-white mb-1">Adapt (Minimize Difficulty)</div><div className="text-xs text-slate-400">Remove/simplify topics to maintain pace.</div></div><ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-blue-400" />
+                              <button onClick={() => handleAdaptation('reduce_difficulty_and_scope', pendingTargetDate)} className="w-full p-4 bg-slate-800 hover:bg-blue-900/20 border border-slate-700 hover:border-blue-500 rounded-xl transition-all text-left flex items-center justify-between group">
+                                  <div><div className="font-bold text-white mb-1">Reduce Difficulty</div><div className="text-xs text-slate-400">Simplify the roadmap to maintain pace.</div></div><ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-blue-400" />
+                              </button>
+                               <button onClick={() => handleDateUpdateWithoutAI(pendingTargetDate)} className="w-full p-4 bg-slate-800 hover:bg-emerald-900/20 border border-slate-700 hover:border-emerald-500 rounded-xl transition-all flex items-center justify-between group">
+                                  <div><div className="font-bold text-white mb-1">Let It Free</div><div className="text-xs text-slate-400">Just update the date. No roadmap changes.</div></div><ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-emerald-400" />
                               </button>
                           </>
                       )}
                   </div>
               )}
-              {!isAdapting && <button onClick={() => setShowDateStrategyModal(false)} className="mt-6 text-slate-500 text-sm hover:text-white">Cancel</button>}
+              {!isAdapting && <button onClick={() => setShowDateStrategyModal(false)} className="mt-8 text-slate-500 text-sm hover:text-white">Cancel</button>}
           </div>
       </div>
   );
@@ -1094,7 +1122,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         );
       case 'roadmap':
-        return <Roadmap roadmap={roadmap} user={user} onSubscribe={handleSubscribe} onUpdateProgress={handleProgress} onReset={handleResetRoadmap} onResetPhase={handleResetPhase} onSwitchCareer={handleSwitchCareerFromRoadmap} onEditTargetDate={() => { setPendingTargetDate(currentCareerDetails?.targetCompletionDate || ''); setShowDateEdit(true); }} pacing={pacing} isLoading={isRoadmapLoading} daysRemaining={daysRemaining} />;
+        return <Roadmap roadmap={roadmap} user={user} onSubscribe={handleSubscribe} onUpdateProgress={handleProgress} onReset={handleResetRoadmap} onResetPhase={handleResetPhase} onSwitchCareer={handleSwitchCareerFromRoadmap} onEditTargetDate={() => { setPendingTargetDate(currentCareerDetails?.targetCompletionDate || ''); setShowDateEditModal(true); }} pacing={pacing} isLoading={isRoadmapLoading} daysRemaining={daysRemaining} />;
       case 'practice':
           return (
               <div className="bg-slate-900 rounded-3xl border border-slate-800 min-h-[80vh] flex flex-col overflow-hidden">
@@ -1228,11 +1256,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-950 text-slate-50 pb-20 md:pb-0">
-      <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
-        {renderContent()}
-        <footer className="mt-8 pt-8 border-t border-slate-900 text-center pb-8 md:pb-4"><p className="text-slate-600 text-sm">Developed by <span className="text-indigo-500 font-semibold"> Hameed Afsar K M</span></p></footer>
-      </main>
+    <div className="bg-slate-950 text-slate-50 min-h-screen">
+      <div className="md:pl-20">
+        <main className="p-4 md:p-8 max-w-7xl mx-auto w-full pb-24 md:pb-8">
+            {renderContent()}
+            <footer className="mt-8 pt-8 border-t border-slate-900 text-center">
+                <p className="text-slate-600 text-sm">Developed by © <span className="font-semibold text-indigo-400">Hameed Afsar K M</span></p>
+            </footer>
+        </main>
+      </div>
+
       <nav className="fixed bottom-0 left-0 w-full bg-slate-900/90 backdrop-blur-xl border-t border-slate-800 p-2 md:hidden z-40">
         <div className="flex justify-around items-center">
           <button onClick={() => setActiveTab('home')} className={`p-3 rounded-xl transition-all ${activeTab === 'home' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-500'}`}><Home className="h-6 w-6" /></button>
@@ -1242,24 +1275,28 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <button onClick={() => setActiveTab('profile')} className={`p-3 rounded-xl transition-all ${activeTab === 'profile' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-500'}`}><User className="h-6 w-6" /></button>
         </div>
       </nav>
+      
       <nav className="fixed left-0 top-0 h-full w-20 bg-slate-900 border-r border-slate-800 flex-col items-center py-8 hidden md:flex z-50">
-        <div className="mb-8 p-2 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-500/30"><TrendingUp className="h-6 w-6 text-white" /></div>
+        <div className="mb-8 p-2 bg-gradient-to-b from-indigo-500 to-purple-600 rounded-xl shadow-lg shadow-indigo-500/30">
+            <Compass className="h-6 w-6 text-white" />
+        </div>
         <div className="flex flex-col gap-4 w-full px-3">
-          <button onClick={() => setActiveTab('home')} className={`p-3 rounded-xl transition-all group relative ${activeTab === 'home' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><Home className="h-5 w-5 mx-auto" /><span className="absolute left-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Home</span></button>
-          <button onClick={() => setActiveTab('roadmap')} className={`p-3 rounded-xl transition-all group relative ${activeTab === 'roadmap' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><Map className="h-5 w-5 mx-auto" /><span className="absolute left-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Roadmap</span></button>
-          <button onClick={() => setActiveTab('practice')} className={`p-3 rounded-xl transition-all group relative ${activeTab === 'practice' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><GraduationCap className="h-5 w-5 mx-auto" /><span className="absolute left-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Practice</span></button>
-          <button onClick={() => setActiveTab('career')} className={`p-3 rounded-xl transition-all group relative ${activeTab === 'career' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><Briefcase className="h-5 w-5 mx-auto" /><span className="absolute left-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Career</span></button>
-          <button onClick={() => setActiveTab('profile')} className={`p-3 rounded-xl transition-all group relative ${activeTab === 'profile' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><User className="h-5 w-5 mx-auto" /><span className="absolute left-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Profile</span></button>
+          <button onClick={() => setActiveTab('home')} className={`p-3 rounded-xl transition-all group relative ${activeTab === 'home' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><Home className="h-5 w-5 mx-auto" /><span className="absolute left-16 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">Home</span></button>
+          <button onClick={() => setActiveTab('roadmap')} className={`p-3 rounded-xl transition-all group relative ${activeTab === 'roadmap' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><Map className="h-5 w-5 mx-auto" /><span className="absolute left-16 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">Roadmap</span></button>
+          <button onClick={() => setActiveTab('practice')} className={`p-3 rounded-xl transition-all group relative ${activeTab === 'practice' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><GraduationCap className="h-5 w-5 mx-auto" /><span className="absolute left-16 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">Practice</span></button>
+          <button onClick={() => setActiveTab('career')} className={`p-3 rounded-xl transition-all group relative ${activeTab === 'career' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><Briefcase className="h-5 w-5 mx-auto" /><span className="absolute left-16 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">Career</span></button>
+          <button onClick={() => setActiveTab('profile')} className={`p-3 rounded-xl transition-all group relative ${activeTab === 'profile' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><User className="h-5 w-5 mx-auto" /><span className="absolute left-16 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">Profile</span></button>
         </div>
       </nav>
+
       <button onClick={() => setIsChatOpen(!isChatOpen)} className="fixed bottom-24 md:bottom-10 right-4 md:right-10 w-14 h-14 bg-indigo-600 hover:bg-indigo-500 rounded-full shadow-2xl shadow-indigo-500/40 flex items-center justify-center z-[60] transition-transform hover:scale-105 active:scale-95">{isChatOpen ? <X className="h-6 w-6 text-white" /> : <MessageSquare className="h-6 w-6 text-white" />}</button>
       <ChatWindow isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} careerTitle={career.title} history={chatHistory} onSend={handleSendMessage} isTyping={isChatTyping} />
       {showCelebration && <CelebrationModal />}
-      {showAdaptationModal && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"><div className="bg-slate-900 p-8 rounded-3xl"><h2 className="text-white font-bold mb-4">Adapt Roadmap?</h2></div></div>}
       {showPhaseCompletionModal && <PhaseCompletionModal />}
       {showFeedbackModal && <FeedbackModal />}
       {confirmAction && <ConfirmationModal />}
       {careerToDelete && <DeleteCareerConfirmationModal />}
+      {showDateEditModal && <DateEditModal />}
       {showDateStrategyModal && <DateStrategyModal />}
       {toast && <div className="fixed bottom-24 md:bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 border border-emerald-500/50 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 animate-fade-in z-[100]"><CheckCircle2 className="h-5 w-5 text-emerald-500" /><span className="font-medium text-sm">{toast.message}</span></div>}
     </div>
