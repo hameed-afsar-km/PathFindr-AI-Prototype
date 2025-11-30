@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { RoadmapPhase, UserProfile, RoadmapItem } from '../types';
 import { Subscription } from './Subscription';
@@ -45,6 +46,7 @@ export const Roadmap: React.FC<RoadmapProps> = ({
   const [showCareerMenu, setShowCareerMenu] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [completionPercentage, setCompletionPercentage] = useState(0);
   
   // Learn More State
   const [expandedLearnMoreItems, setExpandedLearnMoreItems] = useState<Set<string>>(new Set());
@@ -59,70 +61,66 @@ export const Roadmap: React.FC<RoadmapProps> = ({
       { id: 'certificate', label: 'Certificates' },
   ];
 
-  const taskStatusMap = useMemo(() => {
-      const map: Record<string, string> = {};
-      if (roadmap) {
-          roadmap.forEach(phase => {
-              phase.items.forEach(item => {
-                  map[item.id] = item.status;
-              });
-          });
-      }
-      return map;
+  // Flatten the roadmap to determine strict linear sequence
+  const flatRoadmapItems = useMemo(() => {
+      if (!roadmap) return [];
+      return roadmap.flatMap(phase => phase.items);
   }, [roadmap]);
 
-  // Check if item is locked based on dependencies
+  // Check if item is locked based on strict linear progression
+  // An item is locked if the IMMEDIATELY PRECEDING item is not completed.
   const isLocked = (item: RoadmapItem) => {
-      if (!item.dependencies || item.dependencies.length === 0) return false;
-      return item.dependencies.some(depId => taskStatusMap[depId] !== 'completed');
+      if (!flatRoadmapItems.length) return false;
+      const index = flatRoadmapItems.findIndex(i => i.id === item.id);
+      
+      // First item is never locked
+      if (index <= 0) return false;
+      
+      // Locked if previous item is NOT completed
+      const prevItem = flatRoadmapItems[index - 1];
+      return prevItem.status !== 'completed';
   };
 
   useEffect(() => {
     if (roadmap && !isLoading) {
         let foundNext = false;
         let activePhaseIndex = 0;
-        let totalPending = 0;
+        let totalItems = 0;
+        let completedItems = 0;
 
+        // Calculate totals and find next task
         for (let i = 0; i < roadmap.length; i++) {
             const phase = roadmap[i];
-            // Next task is the first pending task that isn't locked
-            const firstPending = phase.items.find(item => item.status === 'pending' && !isLocked(item));
-            totalPending += phase.items.filter(i => i.status === 'pending').length;
-            
-            if (firstPending && !foundNext) {
-                setNextTask({ item: firstPending, phaseIndex: i });
-                activePhaseIndex = i;
+            totalItems += phase.items.length;
+            completedItems += phase.items.filter(i => i.status === 'completed').length;
+        }
+
+        // Find the first pending task in strict sequence
+        const firstPending = flatRoadmapItems.find(item => item.status === 'pending');
+        
+        if (firstPending) {
+            // Find which phase this item belongs to
+            const phaseIndex = roadmap.findIndex(p => p.items.some(i => i.id === firstPending.id));
+            if (phaseIndex !== -1) {
+                setNextTask({ item: firstPending, phaseIndex });
+                activePhaseIndex = phaseIndex;
                 foundNext = true;
             }
         }
-        
-        // If all pending items are locked (rare deadlock or just future phases), take the first pending anyway
-        if (!foundNext && totalPending > 0) {
-             for (let i = 0; i < roadmap.length; i++) {
-                 const first = roadmap[i].items.find(item => item.status === 'pending');
-                 if (first) {
-                     setNextTask({ item: first, phaseIndex: i });
-                     activePhaseIndex = i;
-                     foundNext = true;
-                     break;
-                 }
-             }
-        }
 
-        if (totalPending === 0 && roadmap.length > 0) {
-            activePhaseIndex = roadmap.length - 1;
-            setNextTask(null);
+        if (totalItems > 0 && completedItems === totalItems) {
             setIsCompleted(true);
-        } else if (totalPending > 0 && !foundNext) {
-             setNextTask(null);
-             setIsCompleted(false);
+            setNextTask(null);
+            activePhaseIndex = roadmap.length - 1;
         } else {
             setIsCompleted(false);
+            if (!foundNext) setNextTask(null);
         }
         
         setExpandedPhase(activePhaseIndex);
+        setCompletionPercentage(totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0);
     }
-  }, [roadmap, isLoading, taskStatusMap]);
+  }, [roadmap, isLoading, flatRoadmapItems]);
 
   const togglePhase = (index: number) => {
       setExpandedPhase(expandedPhase === index ? null : index);
@@ -400,12 +398,24 @@ export const Roadmap: React.FC<RoadmapProps> = ({
             </div>
 
             {/* Quick Stats Row */}
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-800/50">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-4 border-t border-slate-800/50">
                 <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800 text-center">
                     <div className="text-2xl font-bold text-white">{daysRemaining}</div>
                     <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold flex items-center justify-center gap-1"><Clock className="h-3 w-3" /> Days Left</div>
                 </div>
-                <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800 flex items-center justify-between px-4 md:px-6 group relative cursor-pointer hover:border-indigo-500/50 transition-colors" onClick={onEditTargetDate}>
+                
+                {/* Progress Bar Stat */}
+                <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800 flex flex-col justify-center px-4">
+                     <div className="flex justify-between items-end mb-1">
+                         <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Progress</div>
+                         <div className="text-sm font-bold text-emerald-400">{completionPercentage}%</div>
+                     </div>
+                     <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                         <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${completionPercentage}%` }}></div>
+                     </div>
+                </div>
+
+                <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800 flex items-center justify-between px-4 md:px-6 group relative cursor-pointer hover:border-indigo-500/50 transition-colors col-span-2 md:col-span-1" onClick={onEditTargetDate}>
                     <div className="text-left">
                          <div className="text-sm font-bold text-slate-300">Target Date</div>
                          <div className="text-xs text-slate-500">{getActiveCareerDate()}</div>

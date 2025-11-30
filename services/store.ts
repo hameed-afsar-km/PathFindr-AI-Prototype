@@ -1,4 +1,5 @@
-import { UserProfile, CareerOption, RoadmapPhase, NewsItem, DailyQuizItem } from '../types';
+
+import { UserProfile, CareerOption, RoadmapPhase, NewsItem, DailyQuizItem, PracticeQuestion, InterviewQuestion } from '../types';
 
 const KEYS = {
   USERS: 'pathfinder_users',
@@ -7,6 +8,7 @@ const KEYS = {
   ROADMAP: 'pathfinder_roadmap_', // Keyed by userId_careerId
   NEWS_CACHE: 'pathfinder_news_cache_', // Keyed by userId_careerId
   DAILY_QUIZ_CACHE: 'pathfinder_daily_quiz_cache_', // Keyed by userId_careerId_date
+  PRACTICE_DATA: 'pathfinder_practice_data_', // Keyed by userId_careerId
 };
 
 export const saveUser = (user: UserProfile & { password?: string }) => {
@@ -92,4 +94,23 @@ export const getDailyQuizCache = (userId: string, careerId: string): DailyQuizIt
   const dateStr = new Date().toISOString().split('T')[0];
   const str = localStorage.getItem(`${KEYS.DAILY_QUIZ_CACHE}${userId}_${careerId}_${dateStr}`);
   return str ? JSON.parse(str) : null;
+};
+
+// --- PRACTICE DATA PERSISTENCE ---
+
+interface PracticeDataStore {
+    topics: string[];
+    questions: PracticeQuestion[];
+    interviews: InterviewQuestion[];
+}
+
+export const savePracticeData = (userId: string, careerId: string, data: Partial<PracticeDataStore>) => {
+    const existing = getPracticeData(userId, careerId) || { topics: [], questions: [], interviews: [] };
+    const merged = { ...existing, ...data };
+    localStorage.setItem(`${KEYS.PRACTICE_DATA}${userId}_${careerId}`, JSON.stringify(merged));
+};
+
+export const getPracticeData = (userId: string, careerId: string): PracticeDataStore | null => {
+    const str = localStorage.getItem(`${KEYS.PRACTICE_DATA}${userId}_${careerId}`);
+    return str ? JSON.parse(str) : null;
 };
