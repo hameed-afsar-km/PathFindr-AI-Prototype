@@ -2,7 +2,15 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { CareerOption, RoadmapPhase, NewsItem, RoadmapItem, SkillQuestion, DailyQuizItem, InterviewQuestion, PracticeQuestion, SimulationScenario, ChatMessage } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Lazy initialization to prevent startup crashes if key is missing/invalid
+const getAI = () => {
+    try {
+        return new GoogleGenAI({ apiKey: process.env.API_KEY });
+    } catch (e) {
+        console.warn("API Key missing or invalid. App will use fallback mode.");
+        return null;
+    }
+};
 
 const NOVA_PERSONA = `
   You are "Nova", an advanced AI Career Architect. 
@@ -16,8 +24,9 @@ export const analyzeInterests = async (
     additionalComments: string,
     excludedCareerTitles: string[] = []
 ): Promise<CareerOption[]> => {
-    // Fallback if AI fails immediately to prevent 500s on initialization
-    if (Math.random() > 0.99) return getFallbackCareers(); // Simulating random network glitch handled gracefully
+    const ai = getAI();
+    // Fallback if AI fails immediately or is not configured
+    if (!ai || Math.random() > 0.99) return getFallbackCareers(); 
 
   const isShowMore = excludedCareerTitles.length > 0;
   const exclusionContext = isShowMore
@@ -73,6 +82,9 @@ export const analyzeInterests = async (
 };
 
 export const searchCareers = async (query: string): Promise<CareerOption[]> => {
+  const ai = getAI();
+  if (!ai) return getFallbackCareers(query);
+
   const prompt = `
     ${NOVA_PERSONA}
     User Search Query: "${query}"
@@ -116,6 +128,18 @@ export const searchCareers = async (query: string): Promise<CareerOption[]> => {
 };
 
 export const generateSkillQuiz = async (careerTitle: string): Promise<SkillQuestion[]> => {
+  const ai = getAI();
+  if (!ai) {
+      // Fallback quiz if AI init fails
+      return [
+          { id: '1', question: `What is the primary function of ${careerTitle}?`, options: ['Efficiency', 'Design', 'Marketing', 'Sales'], correctIndex: 0, difficulty: 'beginner' },
+          { id: '2', question: `Which tool is standard in ${careerTitle}?`, options: ['Notepad', 'Excel', 'Standard Tool', 'Calculator'], correctIndex: 2, difficulty: 'beginner' },
+          { id: '3', question: `Intermediate concept in ${careerTitle}?`, options: ['Basic Syntax', 'System Integration', 'Hello World', 'None'], correctIndex: 1, difficulty: 'intermediate' },
+          { id: '4', question: `Advanced optimization requires:`, options: ['Guesswork', 'Data Analysis', 'Ignoring users', 'Rebooting'], correctIndex: 1, difficulty: 'advanced' },
+          { id: '5', question: `Expert level challenge:`, options: ['Scaling', 'Writing a loop', 'Saving a file', 'Printing'], correctIndex: 0, difficulty: 'advanced' }
+      ];
+  }
+
   const prompt = `
     ${NOVA_PERSONA}
     Generate a 5-question technical skill assessment for: ${careerTitle}.
@@ -236,6 +260,9 @@ export const generateRoadmap = async (
     `;
 
     try {
+        const ai = getAI();
+        if (!ai) throw new Error("AI not initialized");
+
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
@@ -272,6 +299,9 @@ export const generateRoadmap = async (
 
 export const fetchTechNews = async (topic: string): Promise<NewsItem[]> => {
     try {
+        const ai = getAI();
+        if (!ai) return getFallbackNews(topic);
+
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: `Find 5 recent, specific news headlines about "${topic}". Return valid URLs from the search results.`,
@@ -312,6 +342,9 @@ export const fetchTechNews = async (topic: string): Promise<NewsItem[]> => {
 
 export const generateDailyQuiz = async (careerTitle: string): Promise<DailyQuizItem | null> => {
     try {
+        const ai = getAI();
+        if (!ai) return getFallbackDailyQuiz(careerTitle);
+
         const prompt = `
             ${NOVA_PERSONA}
             Create ONE single multiple-choice question for a ${careerTitle} student to test their knowledge today.
@@ -336,6 +369,9 @@ export const generateDailyQuiz = async (careerTitle: string): Promise<DailyQuizI
 
 export const generatePracticeTopics = async (careerTitle: string): Promise<string[]> => {
     try {
+        const ai = getAI();
+        if (!ai) return ["Core Fundamentals", "Advanced Techniques", "Best Practices", "Tools & Ecosystem", "System Design"];
+
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: `List 10 most important technical topics/concepts for ${careerTitle}. Return JSON array of strings.`,
@@ -359,6 +395,9 @@ export const generatePracticeQuestions = async (careerTitle: string, topic?: str
     `;
     
     try {
+        const ai = getAI();
+        if (!ai) return getFallbackPracticeQuestions(careerTitle);
+
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
@@ -413,6 +452,9 @@ export const generateCompanyInterviewQuestions = async (
     `;
     
     try {
+        const ai = getAI();
+        if (!ai) return getFallbackInterviewQuestions(careerTitle);
+
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
@@ -436,6 +478,9 @@ export const generateSimulationScenario = async (careerTitle: string): Promise<S
     `;
     
     try {
+        const ai = getAI();
+        if (!ai) throw new Error("AI missing");
+
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
@@ -494,6 +539,9 @@ export const generateChatResponse = async (
     `;
 
     try {
+        const ai = getAI();
+        if (!ai) return "I'm running in offline mode. Please check your connection or API key.";
+
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt
