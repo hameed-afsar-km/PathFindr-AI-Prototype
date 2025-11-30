@@ -389,7 +389,7 @@ export const generatePracticeQuestions = async (careerTitle: string, topic?: str
     const context = searchQuery ? `related to search: "${searchQuery}"` : topic ? `focused on topic: "${topic}"` : `general practice`;
     const prompt = `
         ${NOVA_PERSONA}
-        Generate 5 practice MCQ questions for ${careerTitle} ${context}.
+        Generate a comprehensive set of 15 practice MCQ questions for ${careerTitle} ${context}.
         Include detailed explanation for the correct answer.
         Output JSON array of PracticeQuestion objects.
     `;
@@ -421,24 +421,24 @@ export const generateCompanyInterviewQuestions = async (
     
     if (filter === 'Aptitude') {
         promptContext = `
-            Generate 8 quantitative aptitude and logical reasoning interview questions suitable for any tech role.
+            Generate 15 quantitative aptitude and logical reasoning interview questions suitable for any tech role.
             Focus on Logic, Math, and Data Interpretation.
             Tag company as "General Aptitude".
         `;
     } else if (filter === 'AI Challenge' && customParams) {
         promptContext = `
-            Generate 8 ${customParams.difficulty} level interview questions about "${customParams.topic}" for a ${careerTitle}.
+            Generate 15 ${customParams.difficulty} level interview questions about "${customParams.topic}" for a ${careerTitle}.
             Tag company as "AI Challenge".
         `;
     } else if (filter !== 'All') {
         promptContext = `
-            Retrieve (simulate) 8 REAL previous interview questions specifically asked at ${filter} for a ${careerTitle} role.
+            Retrieve (simulate) 15 REAL previous interview questions specifically asked at ${filter} for a ${careerTitle} role.
             Focus on questions historically associated with ${filter}.
             Tag company strictly as "${filter}".
         `;
     } else {
          promptContext = `
-            Generate a diverse set of 8 real-world interview questions for ${careerTitle}.
+            Generate a diverse set of 15 real-world interview questions for ${careerTitle}.
             Source them from top tech companies (Google, Amazon, Microsoft, Netflix, Startups, etc.).
             Tag each question with the specific company name.
         `;

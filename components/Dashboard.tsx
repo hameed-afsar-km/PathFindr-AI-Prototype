@@ -1,5 +1,6 @@
 
 
+
 import React, { useEffect, useState, useRef } from 'react';
 import { UserProfile, CareerOption, RoadmapPhase, NewsItem, RoadmapItem, DailyQuizItem, InterviewQuestion, PracticeQuestion, SimulationScenario, ChatMessage } from '../types';
 import { Roadmap } from './Roadmap';
@@ -181,6 +182,28 @@ const ChatWindow: React.FC<{ isOpen: boolean; onClose: () => void; careerTitle: 
     );
 };
 
+const QuestionSkeletonCard = () => (
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 animate-pulse">
+        <div className="h-4 bg-slate-800 rounded w-3/4 mb-6"></div>
+        <div className="space-y-3">
+            <div className="h-10 bg-slate-800 rounded-xl"></div>
+            <div className="h-10 bg-slate-800 rounded-xl"></div>
+            <div className="h-10 bg-slate-800 rounded-xl"></div>
+            <div className="h-10 bg-slate-800 rounded-xl"></div>
+        </div>
+    </div>
+);
+
+const InterviewSkeletonCard = () => (
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 animate-pulse">
+        <div className="flex justify-between items-start mb-4">
+            <div className="h-4 bg-slate-800 rounded w-24"></div>
+        </div>
+        <div className="h-5 bg-slate-800 rounded w-full mb-6"></div>
+        <div className="h-10 bg-slate-800 rounded-xl"></div>
+    </div>
+);
+
 
 export const Dashboard: React.FC<DashboardProps> = ({ 
   user, career, roadmap, onLogout, setRoadmap, setUser, setCareer, onAddCareer, onDeleteAccount 
@@ -201,13 +224,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [isQuizCorrect, setIsQuizCorrect] = useState<boolean | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
 
-  // Practice Tab State
+  // --- NEW PRACTICE TAB STATE ---
   const [practiceTab, setPracticeTab] = useState<'quiz' | 'interview' | 'simulation'>('quiz');
   const [practiceSearch, setPracticeSearch] = useState('');
   const [practiceTopics, setPracticeTopics] = useState<string[]>([]);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   
-  // Question Banks
+  // Question Banks (Full Data)
+  const [practiceQuestionBank, setPracticeQuestionBank] = useState<PracticeQuestion[]>([]);
+  const [interviewQuestionBank, setInterviewQuestionBank] = useState<InterviewQuestion[]>([]);
+  
+  // Filtered/Displayed Questions
   const [practiceQuestions, setPracticeQuestions] = useState<PracticeQuestion[]>([]);
   const [interviewQuestions, setInterviewQuestions] = useState<InterviewQuestion[]>([]);
   
@@ -223,6 +250,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   
   const [isPracticeLoading, setIsPracticeLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  // --- END PRACTICE TAB STATE ---
 
   // Adaptation State
   const [isAdapting, setIsAdapting] = useState(false);
@@ -395,51 +423,101 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const handleHomeSearch = () => {
       loadNews(homeSearchQuery);
-  }
+  };
 
-  // --- PRACTICE TAB INIT (PERSISTENT QUESTION BANK) ---
+  // FIX: Define the missing handlePracticeSearch function.
+  // The practice question filtering is handled reactively by a useEffect hook,
+  // so this function is only here to prevent an error on Enter key press.
+  const handlePracticeSearch = () => {};
+
+  // --- REFACTORED PRACTICE TAB LOGIC ---
   useEffect(() => {
-      const initPractice = async () => {
-          if (activeTab === 'practice') {
-              // Load persisted data first
-              const savedData = getPracticeData(user.id, career.id);
-              
-              if (savedData) {
-                  setPracticeTopics(savedData.topics || []);
-                  setPracticeQuestions(savedData.questions || []);
-                  setInterviewQuestions(savedData.interviews || []);
-              } else {
-                  // Initial Generation for new career
-                  setIsPracticeLoading(true);
-                  try {
-                      const topics = await generatePracticeTopics(career.title);
-                      setPracticeTopics(topics);
-                      
-                      const qs = await generatePracticeQuestions(career.title);
-                      setPracticeQuestions(qs);
-                      
-                      const iqs = await generateCompanyInterviewQuestions(career.title, 'All');
-                      setInterviewQuestions(iqs);
-                      
-                      savePracticeData(user.id, career.id, {
-                          topics: topics,
-                          questions: qs,
-                          interviews: iqs
-                      });
-                  } catch(e) {
-                      console.error("Failed init practice", e);
-                  } finally {
-                      setIsPracticeLoading(false);
-                  }
-              }
-              
-              setPracticeSearch('');
-              setCompanyFilter('All');
-              setSimulationScenario(null);
-          }
-      };
-      initPractice();
+    const initPracticeBank = async () => {
+        if (activeTab === 'practice') {
+            setIsPracticeLoading(true);
+            const savedData = getPracticeData(user.id, career.id);
+            
+            if (savedData && savedData.questions.length > 0) {
+                setPracticeTopics(savedData.topics || []);
+                setPracticeQuestionBank(savedData.questions || []);
+                setInterviewQuestionBank(savedData.interviews || []);
+            } else {
+                try {
+                    const [topics, qs, iqs] = await Promise.all([
+                        generatePracticeTopics(career.title),
+                        generatePracticeQuestions(career.title),
+                        generateCompanyInterviewQuestions(career.title, 'All')
+                    ]);
+                    
+                    setPracticeTopics(topics);
+                    setPracticeQuestionBank(qs);
+                    setInterviewQuestionBank(iqs);
+                    
+                    savePracticeData(user.id, career.id, {
+                        topics: topics,
+                        questions: qs,
+                        interviews: iqs
+                    });
+                } catch(e) { console.error("Failed to init practice bank", e); }
+            }
+            setIsPracticeLoading(false);
+        }
+    };
+    initPracticeBank();
   }, [career.id, activeTab]);
+
+  // Client-side filtering effect
+  useEffect(() => {
+      let filteredQs = practiceQuestionBank;
+      if (selectedTopic) {
+          filteredQs = practiceQuestionBank.filter(q => q.topic === selectedTopic);
+      }
+      if (practiceSearch && practiceTab === 'quiz') {
+          filteredQs = practiceQuestionBank.filter(q => q.question.toLowerCase().includes(practiceSearch.toLowerCase()));
+      }
+      setPracticeQuestions(filteredQs);
+
+      let filteredIQs = interviewQuestionBank;
+      if (companyFilter !== 'All' && companyFilter !== 'AI Challenge') {
+          filteredIQs = interviewQuestionBank.filter(q => q.company === companyFilter);
+      }
+       if (practiceSearch && practiceTab === 'interview') {
+          filteredIQs = interviewQuestionBank.filter(q => q.question.toLowerCase().includes(practiceSearch.toLowerCase()));
+      }
+      setInterviewQuestions(filteredIQs);
+  }, [selectedTopic, companyFilter, practiceSearch, practiceQuestionBank, interviewQuestionBank, practiceTab]);
+
+  const handleLoadMorePractice = async () => {
+    setIsLoadingMore(true);
+    try {
+        const newQs = await generatePracticeQuestions(career.title, selectedTopic || undefined);
+        const updatedBank = [...practiceQuestionBank, ...newQs];
+        setPracticeQuestionBank(updatedBank);
+        savePracticeData(user.id, career.id, { questions: updatedBank });
+    } catch(e) { console.error(e); } finally { setIsLoadingMore(false); }
+  };
+
+  const handleLoadMoreInterview = async () => {
+    setIsLoadingMore(true);
+    try {
+        const newQs = await generateCompanyInterviewQuestions(career.title, companyFilter);
+        const updatedBank = [...interviewQuestionBank, ...newQs];
+        setInterviewQuestionBank(updatedBank);
+        savePracticeData(user.id, career.id, { interviews: updatedBank });
+    } catch(e) { console.error(e); } finally { setIsLoadingMore(false); }
+  };
+  
+  const handleAICustomChallenge = async () => {
+      setIsPracticeLoading(true);
+      try {
+          const params = { topic: customGenTopic || career.title, difficulty: customGenDifficulty };
+          const iqs = await generateCompanyInterviewQuestions(career.title, 'AI Challenge', params);
+          setInterviewQuestions(iqs); // Show only these, don't add to bank
+      } catch (e) { console.error(e); } finally { setIsPracticeLoading(false); }
+  };
+  
+  // --- END REFACTORED PRACTICE LOGIC ---
+
 
   useEffect(() => {
     const checkDailyQuiz = async () => {
@@ -510,69 +588,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
       setTimeout(() => setQuizState('completed'), 2000);
   };
 
-  const handlePracticeSearch = async () => {
-      setIsPracticeLoading(true);
-      if (practiceTab === 'quiz') {
-          // Add to existing bank? Or replace for search?
-          // For specific search, replace current view but maybe don't persist as "main bank" yet
-          const qs = await generatePracticeQuestions(career.title, selectedTopic || undefined, practiceSearch);
-          setPracticeQuestions(qs); // Replace view for search results
-      } else if (practiceTab === 'interview') {
-          const params = companyFilter === 'AI Challenge' 
-            ? { topic: customGenTopic || career.title, difficulty: customGenDifficulty } 
-            : undefined;
-
-          const qs = await generateCompanyInterviewQuestions(career.title, companyFilter, params);
-          setInterviewQuestions(qs);
-      } else {
-          const sim = await generateSimulationScenario(career.title);
-          setSimulationScenario(sim);
-          setSimAnswer(null);
-      }
-      setIsPracticeLoading(false);
-  };
-  
-  const handleLoadMorePractice = async () => {
-      setIsLoadingMore(true);
-      try {
-          const newQs = await generatePracticeQuestions(career.title, selectedTopic || undefined);
-          const updatedQs = [...practiceQuestions, ...newQs];
-          setPracticeQuestions(updatedQs);
-          savePracticeData(user.id, career.id, { questions: updatedQs });
-      } catch(e) {
-          console.error(e);
-      } finally {
-          setIsLoadingMore(false);
-      }
-  };
-
-  const handleLoadMoreInterview = async () => {
-      setIsLoadingMore(true);
-      try {
-          const newQs = await generateCompanyInterviewQuestions(career.title, companyFilter);
-          const updatedQs = [...interviewQuestions, ...newQs];
-          setInterviewQuestions(updatedQs);
-          savePracticeData(user.id, career.id, { interviews: updatedQs });
-      } catch(e) {
-          console.error(e);
-      } finally {
-          setIsLoadingMore(false);
-      }
-  };
-
-  // Trigger search when tab changes or filter changes (except for AI Challenge)
-  useEffect(() => {
-      if (activeTab === 'practice') {
-          if (companyFilter !== 'AI Challenge') {
-              // We rely on initPractice for initial load. 
-              // This is mainly for company filter switching if not 'All'.
-              // But unified bank means 'All' is default.
-              // If user selects specific filter, we might just filter client side?
-              // The user asked for "questions from previous".
-              // Let's assume Interview Questions are unified.
-          }
-      }
-  }, [activeTab, practiceTab, selectedTopic, companyFilter]);
+  const handleSimulationSearch = async () => {
+    setIsPracticeLoading(true);
+    const sim = await generateSimulationScenario(career.title);
+    setSimulationScenario(sim);
+    setSimAnswer(null);
+    setIsPracticeLoading(false);
+  }
 
   const handleSimAnswer = (index: number) => {
       if (!simulationScenario || simAnswer !== null) return;
@@ -1152,14 +1174,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
                   <div className="p-6 md:p-8 flex-1 bg-slate-900">
                       {isPracticeLoading ? (
-                           <div className="flex flex-col items-center justify-center py-20"><RefreshCw className="h-10 w-10 text-indigo-500 animate-spin mb-4" /><p className="text-slate-400 animate-pulse">Nova is generating your practice session...</p></div>
+                           <div className="space-y-6">
+                               {practiceTab === 'quiz' && Array.from({ length: 3 }).map((_, i) => <QuestionSkeletonCard key={i} />)}
+                               {practiceTab === 'interview' && Array.from({ length: 4 }).map((_, i) => <InterviewSkeletonCard key={i} />)}
+                               {practiceTab === 'simulation' && <div className="flex flex-col items-center justify-center py-20"><RefreshCw className="h-10 w-10 text-indigo-500 animate-spin mb-4" /><p className="text-slate-400 animate-pulse">Nova is generating your simulation...</p></div>}
+                           </div>
                       ) : (
                           <>
                               {practiceTab === 'quiz' && (
                                   <div className="animate-fade-in space-y-8">
                                       <div><h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Suggested Topics</h3><div className="flex flex-wrap gap-2"><button onClick={() => setSelectedTopic(null)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${!selectedTopic ? 'bg-indigo-500 text-white border-indigo-500' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600'}`}>General</button>{practiceTopics.map(t => <button key={t} onClick={() => setSelectedTopic(t)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${selectedTopic === t ? 'bg-indigo-500 text-white border-indigo-500' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600'}`}>{t}</button>)}</div></div>
                                       <div className="space-y-6">
-                                          {practiceQuestions.length > 0 ? practiceQuestions.map((q, qIdx) => (<div key={q.id || qIdx} className="bg-slate-950 border border-slate-800 rounded-2xl p-6"><h4 className="text-lg font-bold text-white mb-4">{q.question}</h4><div className="grid gap-3">{q.options.map((opt, oIdx) => (<QuizOption key={`${q.id || qIdx}-${oIdx}`} option={opt} index={oIdx} correctIndex={q.correctIndex} explanation={q.explanation} />))}</div></div>)) : <div className="text-center py-10 text-slate-500">No questions available.</div>}
+                                          {practiceQuestions.length > 0 ? practiceQuestions.map((q, qIdx) => (<div key={q.id || qIdx} className="bg-slate-950 border border-slate-800 rounded-2xl p-6"><h4 className="text-lg font-bold text-white mb-4">{q.question}</h4><div className="grid gap-3">{q.options.map((opt, oIdx) => (<QuizOption key={`${q.id || qIdx}-${oIdx}`} option={opt} index={oIdx} correctIndex={q.correctIndex} explanation={q.explanation} />))}</div></div>)) : <div className="text-center py-10 text-slate-500">No questions available for this filter.</div>}
                                       </div>
                                       <button onClick={handleLoadMorePractice} disabled={isLoadingMore} className="w-full py-3 mt-4 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl flex items-center justify-center gap-2">{isLoadingMore ? <RefreshCw className="h-4 w-4 animate-spin"/> : <PlusCircle className="h-4 w-4"/>} Load More Questions</button>
                                   </div>
@@ -1175,7 +1201,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                               <div className="absolute top-0 right-0 w-64 h-64 bg-fuchsia-500/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
                                               <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Sparkles className="h-5 w-5 text-fuchsia-500" /> Custom AI Generator</h3>
                                               <div className="grid md:grid-cols-3 gap-4 mb-4"><div className="md:col-span-2"><label className="text-xs text-slate-500 block mb-1 uppercase font-bold">Topic</label><input type="text" placeholder={`e.g. Advanced ${career.title} concepts`} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-fuchsia-500 outline-none" value={customGenTopic} onChange={e => setCustomGenTopic(e.target.value)} /></div><div><label className="text-xs text-slate-500 block mb-1 uppercase font-bold">Difficulty</label><select className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-fuchsia-500 outline-none" value={customGenDifficulty} onChange={e => setCustomGenDifficulty(e.target.value)}><option>Easy</option><option>Medium</option><option>Hard</option><option>Expert</option></select></div></div>
-                                              <button onClick={handlePracticeSearch} className="w-full py-3 bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-fuchsia-900/20">Generate Challenge Questions</button>
+                                              <button onClick={handleAICustomChallenge} className="w-full py-3 bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-fuchsia-900/20">Generate Challenge Questions</button>
                                           </div>
                                       )}
 
@@ -1188,7 +1214,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                                   </div>
                                                   <div>{visibleAnswers.has(q.id) ? <div className="bg-slate-900 p-4 rounded-xl text-sm text-slate-300 border border-slate-800 animate-fade-in"><span className="font-bold text-indigo-400 block mb-1">Answer Guide:</span>{q.answer}</div> : <button onClick={() => toggleAnswerReveal(q.id)} className="w-full py-3 border border-slate-800 rounded-xl text-slate-500 hover:text-white hover:bg-slate-800 transition-all text-sm font-medium flex items-center justify-center gap-2"><Eye className="h-4 w-4" /> Reveal Answer</button>}</div>
                                               </div>
-                                          )) : <div className="col-span-2 text-center py-10 text-slate-500">No questions found.</div>}
+                                          )) : <div className="col-span-2 text-center py-10 text-slate-500">No questions found. Try changing filters or loading more.</div>}
                                       </div>
                                       {companyFilter !== 'AI Challenge' && (
                                           <button onClick={handleLoadMoreInterview} disabled={isLoadingMore} className="w-full py-3 mt-4 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl flex items-center justify-center gap-2">{isLoadingMore ? <RefreshCw className="h-4 w-4 animate-spin"/> : <PlusCircle className="h-4 w-4"/>} Load More Questions</button>
@@ -1196,8 +1222,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                   </div>
                               )}
 
-                              {practiceTab === 'simulation' && simulationScenario && (
+                              {practiceTab === 'simulation' && (
                                   <div className="animate-fade-in max-w-3xl mx-auto">
+                                    {!simulationScenario ? (
+                                        <div className="text-center py-20">
+                                            <div className="w-20 h-20 bg-slate-800 rounded-3xl mx-auto mb-6 flex items-center justify-center"><PlayCircle className="h-10 w-10 text-indigo-500" /></div>
+                                            <h3 className="text-xl font-bold text-white mb-2">Simulation Arena</h3>
+                                            <p className="text-slate-400 mb-6">Test your decision-making in real-world job scenarios.</p>
+                                            <button onClick={handleSimulationSearch} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20">Start New Scenario</button>
+                                        </div>
+                                    ) : (
                                       <div className="bg-slate-950 border border-indigo-500/30 rounded-3xl overflow-hidden shadow-2xl relative">
                                           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-600"></div>
                                           <div className="p-8">
@@ -1216,9 +1250,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                                       );
                                                   })}
                                               </div>
-                                              {simAnswer !== null && <div className="mt-8 p-6 bg-slate-900 rounded-2xl border border-indigo-500/20 animate-fade-in"><h4 className="text-indigo-400 font-bold mb-2 flex items-center gap-2"><Zap className="h-4 w-4" /> Nova Analysis</h4><p className="text-slate-300">{simulationScenario.explanation}</p><button onClick={handlePracticeSearch} className="mt-4 text-sm text-slate-400 hover:text-white underline decoration-slate-600 hover:decoration-white underline-offset-4">Next Scenario</button></div>}
+                                              {simAnswer !== null && <div className="mt-8 p-6 bg-slate-900 rounded-2xl border border-indigo-500/20 animate-fade-in"><h4 className="text-indigo-400 font-bold mb-2 flex items-center gap-2"><Zap className="h-4 w-4" /> Nova Analysis</h4><p className="text-slate-300">{simulationScenario.explanation}</p><button onClick={handleSimulationSearch} className="mt-4 text-sm text-slate-400 hover:text-white underline decoration-slate-600 hover:decoration-white underline-offset-4">Next Scenario</button></div>}
                                           </div>
                                       </div>
+                                    )}
                                   </div>
                               )}
                           </>
