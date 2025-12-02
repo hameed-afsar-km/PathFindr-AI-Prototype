@@ -18,188 +18,291 @@ interface DashboardProps {
   onDeleteAccount: () => void;
 }
 
-interface QuizOptionProps {
-  option: string;
-  index: number;
-  correctIndex: number;
-  explanation: string;
-}
+// Improved Practice Question Card with integrated state and robust type checking
+const PracticeQuestionCard: React.FC<{ question: PracticeQuestion, index: number }> = ({ question, index }) => {
+    const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
-const QuizOption: React.FC<QuizOptionProps> = ({ option, index, correctIndex, explanation }) => {
-    const [selected, setSelected] = useState<boolean | null>(null);
-    
-    const handleClick = () => {
-        if (selected !== null) return;
-        setSelected(index === correctIndex);
+    const handleSelect = (idx: number) => {
+        if (selectedIdx !== null) return; // Prevent changing answer
+        setSelectedIdx(idx);
     };
 
-    const isCorrect = index === correctIndex;
-    const isSelected = selected !== null; 
-
-    let className = "w-full text-left p-4 rounded-xl border transition-all mb-2 flex justify-between items-center ";
-    
-    if (!isSelected) {
-        className += "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-indigo-500";
-    } else {
-        if (isCorrect) {
-             className += "bg-emerald-500/20 border-emerald-500 text-white";
-        } else if (selected === false) { 
-             className += "bg-red-500/20 border-red-500 text-white";
-        } else {
-             className += "bg-slate-900 border-slate-700 text-slate-500 opacity-50";
-        }
-    }
+    // FIX: Ensure correctIndex is treated as a number for comparison
+    const correctIdx = Number(question.correctIndex);
+    const isAnswered = selectedIdx !== null;
+    const isUserCorrect = selectedIdx === correctIdx;
 
     return (
-        <div className="mb-2">
-            <button 
-                onClick={handleClick}
-                disabled={isSelected}
-                className={className}
-            >
-                <span>{option}</span>
-                {isSelected && isCorrect && <CheckCircle2 className="h-5 w-5 text-emerald-400" />}
-                {isSelected && selected === false && <AlertCircle className="h-5 w-5 text-red-400" />}
-            </button>
-            {isSelected && (selected === false || isCorrect) && index === correctIndex && (
-                 <div className="text-sm text-emerald-400 mt-1 pl-2 animate-fade-in">
-                     <span className="font-bold">Correct:</span> {explanation}
-                 </div>
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 transition-all hover:border-slate-700 w-full">
+            <h4 className="text-lg font-bold text-white mb-6 flex items-start gap-3">
+                <span className="bg-indigo-500/10 text-indigo-400 text-xs px-2 py-1 rounded pt-0.5 shrink-0 border border-indigo-500/20">Q{index + 1}</span>
+                {question.question}
+            </h4>
+            
+            <div className="grid gap-3">
+                {question.options.map((opt, idx) => {
+                    // Logic for button styling based on state
+                    // Using !important classes to ensure visibility overrides default hover
+                    let btnClass = "w-full text-left p-4 rounded-xl border transition-all flex justify-between items-center ";
+                    let icon = null;
+
+                    if (isAnswered) {
+                        if (idx === correctIdx) {
+                            // CORRECT ANSWER: Always Green (whether selected or not)
+                            btnClass += "!bg-emerald-500/20 !border-emerald-500 text-white ring-1 ring-emerald-500/50";
+                            icon = <CheckCircle2 className="h-5 w-5 text-emerald-400" />;
+                        } else if (idx === selectedIdx) {
+                            // WRONG SELECTION: Red
+                            btnClass += "!bg-red-500/20 !border-red-500 text-white ring-1 ring-red-500/50";
+                            icon = <AlertCircle className="h-5 w-5 text-red-400" />;
+                        } else {
+                            // UNSELECTED & NOT CORRECT: Dimmed
+                            btnClass += "bg-slate-900 border-slate-800 text-slate-500 opacity-50";
+                        }
+                    } else {
+                        // DEFAULT STATE
+                        btnClass += "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-indigo-500 hover:text-white";
+                    }
+
+                    return (
+                        <button 
+                            key={idx}
+                            onClick={() => handleSelect(idx)}
+                            disabled={isAnswered}
+                            className={btnClass}
+                        >
+                            <span className="flex items-center gap-3">
+                                <span className={`w-6 h-6 rounded-full border flex items-center justify-center text-xs font-bold ${
+                                    isAnswered && idx === correctIdx ? '!bg-emerald-500 !border-emerald-500 text-slate-950' : 
+                                    isAnswered && idx === selectedIdx ? '!bg-red-500 !border-red-500 text-white' :
+                                    'border-slate-600 text-slate-400'
+                                }`}>
+                                    {['A','B','C','D'][idx]}
+                                </span>
+                                {opt}
+                            </span>
+                            {icon}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {isAnswered && (
+                <div className={`mt-6 p-4 rounded-xl border animate-fade-in ${isUserCorrect ? 'bg-emerald-900/10 border-emerald-500/30' : 'bg-red-900/10 border-red-500/30'}`}>
+                    <div className="flex items-center gap-2 mb-2">
+                        {isUserCorrect ? (
+                            <span className="text-emerald-400 font-bold text-sm flex items-center gap-2">
+                                <CheckCircle2 className="h-4 w-4" /> Correct!
+                            </span>
+                        ) : (
+                            <span className="text-red-400 font-bold text-sm flex items-center gap-2">
+                                <AlertCircle className="h-4 w-4" /> Incorrect
+                            </span>
+                        )}
+                    </div>
+                    <p className="text-slate-300 text-sm leading-relaxed">
+                        <span className="font-semibold text-slate-400 text-xs uppercase tracking-wider block mb-1">Explanation</span>
+                        {question.explanation}
+                    </p>
+                </div>
             )}
-            {isSelected && selected === false && (
-                 <div className="text-sm text-red-400 mt-1 pl-2 animate-fade-in">
-                     Incorrect.
-                 </div>
-            )}
+        </div>
+    );
+};
+
+const QuizOption: React.FC<any> = ({ option, index, correctIndex, explanation }) => {
+    const [selected, setSelected] = useState<boolean | null>(null);
+    const handleClick = () => { if (selected !== null) return; setSelected(index === correctIndex); };
+    const isCorrect = index === correctIndex;
+    const isSelected = selected !== null; 
+    let className = "w-full text-left p-4 rounded-xl border transition-all mb-2 flex justify-between items-center ";
+    if (!isSelected) { className += "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-indigo-500"; } 
+    else { if (isCorrect) className += "bg-emerald-500/20 border-emerald-500 text-white"; else if (selected === false) className += "bg-red-500/20 border-red-500 text-white"; else className += "bg-slate-900 border-slate-700 text-slate-500 opacity-50"; }
+    return (
+        <div className="mb-2"><button onClick={handleClick} disabled={isSelected} className={className}><span>{option}</span>{isSelected && isCorrect && <CheckCircle2 className="h-5 w-5 text-emerald-400" />}{isSelected && selected === false && <AlertCircle className="h-5 w-5 text-red-400" />}</button>
+            {isSelected && (selected === false || isCorrect) && index === correctIndex && <div className="text-sm text-emerald-400 mt-1 pl-2 animate-fade-in"><span className="font-bold">Correct:</span> {explanation}</div>}
+            {isSelected && selected === false && <div className="text-sm text-red-400 mt-1 pl-2 animate-fade-in">Incorrect.</div>}
         </div>
     );
 };
 
 const CountdownTimer = () => {
     const [timeLeft, setTimeLeft] = useState('');
-
     useEffect(() => {
-        const calculateTimeLeft = () => {
-            const now = new Date();
-            const tomorrow = new Date(now);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            tomorrow.setHours(0, 0, 0, 0);
-            
-            const diff = tomorrow.getTime() - now.getTime();
-            
-            const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
-            const m = Math.floor((diff / (1000 * 60)) % 60);
-            const s = Math.floor((diff / 1000) % 60);
-            
-            return `${h.toString().padStart(2, '0')} : ${m.toString().padStart(2, '0')} : ${s.toString().padStart(2, '0')}`;
-        };
-
         const timer = setInterval(() => {
-            setTimeLeft(calculateTimeLeft());
+            const now = new Date(); const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1); tomorrow.setHours(0, 0, 0, 0);
+            const diff = tomorrow.getTime() - now.getTime();
+            const h = Math.floor((diff / (1000 * 60 * 60)) % 24); const m = Math.floor((diff / (1000 * 60)) % 60); const s = Math.floor((diff / 1000) % 60);
+            setTimeLeft(`${h.toString().padStart(2, '0')} : ${m.toString().padStart(2, '0')} : ${s.toString().padStart(2, '0')}`);
         }, 1000);
-        
-        setTimeLeft(calculateTimeLeft());
-
         return () => clearInterval(timer);
     }, []);
-
     return <span className="text-white font-mono font-bold tracking-widest">{timeLeft}</span>;
 };
 
 const ChatWindow: React.FC<{ isOpen: boolean; onClose: () => void; careerTitle: string; history: ChatMessage[]; onSend: (msg: string) => void; isTyping: boolean }> = ({ isOpen, onClose, careerTitle, history, onSend, isTyping }) => {
     const [input, setInput] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        if (isOpen && messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-        }
-    }, [history, isOpen]);
-
+    useEffect(() => { if (isOpen && messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: 'smooth' }); }, [history, isOpen]);
     if (!isOpen) return null;
-
     return (
         <div className="fixed bottom-24 md:bottom-10 right-4 md:right-10 w-80 md:w-96 h-[500px] bg-slate-900 border border-indigo-500/30 rounded-3xl shadow-2xl flex flex-col overflow-hidden z-[70] animate-fade-in">
-            <div className="bg-slate-950 p-4 border-b border-slate-800 flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                    <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400">
-                        <MessageSquare className="h-5 w-5" />
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-white text-sm">Nova Support</h3>
-                        <p className="text-xs text-slate-500">Online</p>
-                    </div>
-                </div>
-                <button onClick={onClose} className="p-1 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white">
-                    <X className="h-5 w-5" />
-                </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-900/50">
-                {history.map(msg => (
-                    <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-slate-800 text-slate-200 rounded-tl-none'}`}>
-                            {msg.text.split('\n').map((line, i) => <p key={i} className={i > 0 ? "mt-2" : ""}>{line}</p>)}
-                        </div>
-                    </div>
-                ))}
-                {isTyping && (
-                    <div className="flex justify-start">
-                        <div className="bg-slate-800 p-3 rounded-2xl rounded-tl-none text-slate-400 text-xs flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce"></span>
-                            <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce delay-100"></span>
-                            <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce delay-200"></span>
-                        </div>
-                    </div>
-                )}
-                <div ref={messagesEndRef} />
-            </div>
-
-            <div className="p-4 bg-slate-950 border-t border-slate-800">
-                <div className="flex gap-2">
-                    <input 
-                        type="text" 
-                        value={input}
-                        onChange={e => setInput(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && !isTyping && input.trim() && (onSend(input), setInput(''))}
-                        placeholder="Type a message..."
-                        className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:border-indigo-500 outline-none"
-                    />
-                    <button 
-                        onClick={() => { if(input.trim()) { onSend(input); setInput(''); }}}
-                        disabled={!input.trim() || isTyping}
-                        className="p-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white disabled:opacity-50"
-                    >
-                        <Send className="h-5 w-5" />
-                    </button>
-                </div>
-            </div>
+            <div className="bg-slate-950 p-4 border-b border-slate-800 flex justify-between items-center"><div className="flex items-center gap-2"><div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400"><MessageSquare className="h-5 w-5" /></div><div><h3 className="font-bold text-white text-sm">Nova Support</h3><p className="text-xs text-slate-500">Online</p></div></div><button onClick={onClose} className="p-1 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white"><X className="h-5 w-5" /></button></div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-900/50">{history.map(msg => (<div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[80%] p-3 rounded-2xl text-sm ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-slate-800 text-slate-200 rounded-tl-none'}`}>{msg.text.split('\n').map((line, i) => <p key={i} className={i > 0 ? "mt-2" : ""}>{line}</p>)}</div></div>))}{isTyping && (<div className="flex justify-start"><div className="bg-slate-800 p-3 rounded-2xl rounded-tl-none text-slate-400 text-xs flex items-center gap-1"><span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce"></span><span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce delay-100"></span><span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce delay-200"></span></div></div>)}<div ref={messagesEndRef} /></div>
+            <div className="p-4 bg-slate-950 border-t border-slate-800"><div className="flex gap-2"><input type="text" value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && !isTyping && input.trim() && (onSend(input), setInput(''))} placeholder="Type a message..." className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:border-indigo-500 outline-none" /><button onClick={() => { if(input.trim()) { onSend(input); setInput(''); }}} disabled={!input.trim() || isTyping} className="p-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white disabled:opacity-50"><Send className="h-5 w-5" /></button></div></div>
         </div>
     );
 };
 
 const QuestionSkeletonCard = () => (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 animate-pulse">
-        <div className="h-4 bg-slate-800 rounded w-3/4 mb-6"></div>
-        <div className="space-y-3">
-            <div className="h-10 bg-slate-800 rounded-xl"></div>
-            <div className="h-10 bg-slate-800 rounded-xl"></div>
-            <div className="h-10 bg-slate-800 rounded-xl"></div>
-            <div className="h-10 bg-slate-800 rounded-xl"></div>
-        </div>
-    </div>
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 animate-pulse"><div className="h-4 bg-slate-800 rounded w-3/4 mb-6"></div><div className="space-y-3"><div className="h-10 bg-slate-800 rounded-xl"></div><div className="h-10 bg-slate-800 rounded-xl"></div><div className="h-10 bg-slate-800 rounded-xl"></div><div className="h-10 bg-slate-800 rounded-xl"></div></div></div>
 );
 
 const InterviewSkeletonCard = () => (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 animate-pulse">
-        <div className="flex justify-between items-start mb-4">
-            <div className="h-4 bg-slate-800 rounded w-24"></div>
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 animate-pulse"><div className="flex justify-between items-start mb-4"><div className="h-4 bg-slate-800 rounded w-24"></div></div><div className="h-5 bg-slate-800 rounded w-full mb-6"></div><div className="h-10 bg-slate-800 rounded-xl"></div></div>
+);
+
+// --- Modals & Overlays ---
+
+const CelebrationModal = ({ onClose }: { onClose: () => void }) => (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
+        <div className="text-center pointer-events-auto bg-slate-900 border border-yellow-500/30 p-8 rounded-3xl shadow-2xl relative overflow-hidden">
+             <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-purple-500/10"></div>
+             <div className="relative z-10">
+                <div className="text-6xl mb-6 animate-bounce">🏆</div>
+                <h2 className="text-3xl font-bold text-white mb-2">Congratulations!</h2>
+                <p className="text-slate-300 mb-8">You've completed the entire roadmap!</p>
+                <button onClick={onClose} className="px-8 py-3 bg-white text-slate-900 font-bold rounded-xl hover:bg-slate-200 transition-colors">Continue</button>
+             </div>
         </div>
-        <div className="h-5 bg-slate-800 rounded w-full mb-6"></div>
-        <div className="h-10 bg-slate-800 rounded-xl"></div>
     </div>
 );
 
+const PhaseCompletionModal = ({ onClose, onUpdateDate }: { onClose: () => void, onUpdateDate: () => void }) => (
+     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+        <div className="bg-slate-900 border border-emerald-500/30 p-8 rounded-3xl max-w-md w-full shadow-2xl relative">
+            <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2"><Zap className="h-6 w-6 text-yellow-400" /> Phase Complete!</h2>
+            <p className="text-slate-400 mb-6">You finished this phase ahead of schedule. Would you like to adjust your target date to finish the whole career path sooner?</p>
+            <div className="space-y-3">
+                <button onClick={onUpdateDate} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-colors">Yes, Update Target Date</button>
+                <button onClick={onClose} className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-colors">No, Keep Original Schedule</button>
+            </div>
+        </div>
+    </div>
+);
+
+const FeedbackModal = ({ onClose, text, setText }: { onClose: () => void, text: string, setText: (s: string) => void }) => (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl max-w-md w-full shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-white">Send Feedback</h2>
+                <button onClick={onClose}><X className="h-5 w-5 text-slate-500" /></button>
+            </div>
+            <textarea 
+                className="w-full h-32 bg-slate-950 border border-slate-800 rounded-xl p-4 text-white focus:border-indigo-500 outline-none resize-none mb-4"
+                placeholder="Tell us what you think..."
+                value={text}
+                onChange={e => setText(e.target.value)}
+            />
+            <button onClick={() => { alert('Feedback sent!'); onClose(); setText(''); }} className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl">Send Message</button>
+        </div>
+    </div>
+);
+
+const ConfirmationModal = ({ action, onConfirm, onCancel }: { action: {type: string, inputValue: string}, onConfirm: () => void, onCancel: () => void }) => (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+        <div className="bg-slate-900 border border-red-500/30 p-6 rounded-3xl max-w-md w-full shadow-2xl">
+             <div className="flex items-center gap-3 mb-4 text-red-400">
+                 <AlertTriangle className="h-6 w-6" />
+                 <h2 className="text-xl font-bold">Are you sure?</h2>
+             </div>
+             <p className="text-slate-300 mb-6">
+                 {action.type === 'reset_all' ? "This will wipe all progress across all careers." : "This will permanently delete your account and all data."}
+             </p>
+             <div className="flex gap-3">
+                 <button onClick={onCancel} className="flex-1 py-3 bg-slate-800 text-white font-bold rounded-xl">Cancel</button>
+                 <button onClick={onConfirm} className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl">Confirm</button>
+             </div>
+        </div>
+    </div>
+);
+
+const DeleteCareerConfirmationModal = ({ onConfirm, onCancel }: { onConfirm: () => void, onCancel: () => void }) => (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+        <div className="bg-slate-900 border border-red-500/30 p-6 rounded-3xl max-w-md w-full shadow-2xl">
+             <div className="flex items-center gap-3 mb-4 text-red-400">
+                 <Trash2 className="h-6 w-6" />
+                 <h2 className="text-xl font-bold">Delete Career Path?</h2>
+             </div>
+             <p className="text-slate-300 mb-6">This will remove this career and its roadmap history.</p>
+             <div className="flex gap-3">
+                 <button onClick={onCancel} className="flex-1 py-3 bg-slate-800 text-white font-bold rounded-xl">Cancel</button>
+                 <button onClick={onConfirm} className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl">Delete</button>
+             </div>
+        </div>
+    </div>
+);
+
+const DateEditModal = ({ date, setDate, onConfirm, onCancel }: { date: string, setDate: (d: string) => void, onConfirm: () => void, onCancel: () => void }) => (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl max-w-sm w-full shadow-2xl">
+            <h2 className="text-xl font-bold text-white mb-4">Change Target Date</h2>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-white mb-6 color-scheme-dark" />
+            <div className="flex gap-3">
+                 <button onClick={onCancel} className="flex-1 py-3 bg-slate-800 text-white font-bold rounded-xl">Cancel</button>
+                 <button onClick={onConfirm} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl">Update</button>
+            </div>
+        </div>
+    </div>
+);
+
+const DateStrategyModal = ({ type, onAdapt, onManual, onClose }: { type: 'extension' | 'shortening' | null, onAdapt: (t: any) => void, onManual: () => void, onClose: () => void }) => (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+        <div className="bg-slate-900 border border-indigo-500/30 p-8 rounded-3xl max-w-lg w-full shadow-2xl">
+            <h2 className="text-2xl font-bold text-white mb-2">Timeline Changed</h2>
+            <p className="text-slate-400 mb-6">How should Nova handle the roadmap changes?</p>
+            
+            <div className="space-y-3">
+                {type === 'extension' ? (
+                    <>
+                        <button onClick={() => onAdapt('increase_difficulty')} className="w-full p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-left group">
+                            <div className="font-bold text-white mb-1 group-hover:text-indigo-400">Fill with Advanced Content</div>
+                            <div className="text-xs text-slate-500">Keep daily pace, add more depth.</div>
+                        </button>
+                        <button onClick={() => onAdapt('relax_pace')} className="w-full p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-left group">
+                             <div className="font-bold text-white mb-1 group-hover:text-indigo-400">Relax the Pace</div>
+                            <div className="text-xs text-slate-500">Spread existing tasks over more days.</div>
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <button onClick={() => onAdapt('challenge_me')} className="w-full p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-left group">
+                             <div className="font-bold text-white mb-1 group-hover:text-indigo-400">Increase Intensity (Challenge Mode)</div>
+                            <div className="text-xs text-slate-500">Compress tasks into shorter time.</div>
+                        </button>
+                         <button onClick={() => onAdapt('reduce_difficulty_and_scope')} className="w-full p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-left group">
+                             <div className="font-bold text-white mb-1 group-hover:text-indigo-400">Reduce Scope</div>
+                            <div className="text-xs text-slate-500">Remove optional/advanced topics.</div>
+                        </button>
+                    </>
+                )}
+                <button onClick={onManual} className="w-full p-4 bg-slate-950 hover:bg-slate-900 border border-slate-800 rounded-xl text-left group">
+                     <div className="font-bold text-slate-400 mb-1 group-hover:text-white">Just Update Date</div>
+                    <div className="text-xs text-slate-600">Don't change the roadmap items.</div>
+                </button>
+            </div>
+             <button onClick={onClose} className="mt-6 w-full text-slate-500 hover:text-white text-sm">Cancel</button>
+        </div>
+    </div>
+);
+
+const AdaptingOverlay = () => (
+    <div className="fixed inset-0 z-[120] flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-md animate-fade-in">
+        <RefreshCw className="h-16 w-16 text-indigo-500 animate-spin mb-6" />
+        <h2 className="text-3xl font-bold text-white mb-2">Nova is Adapting...</h2>
+        <p className="text-slate-400">Re-architecting your roadmap based on new constraints.</p>
+    </div>
+);
 
 export const Dashboard: React.FC<DashboardProps> = ({ 
   user, career, roadmap, onLogout, setRoadmap, setUser, setCareer, onAddCareer, onDeleteAccount 
@@ -213,666 +316,101 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [isRoadmapLoading, setIsRoadmapLoading] = useState(false);
   const [toast, setToast] = useState<{message: string, type: 'success' | 'info'} | null>(null);
   
-  // Daily Quiz State
   const [dailyQuiz, setDailyQuiz] = useState<DailyQuizItem | null>(null);
   const [quizState, setQuizState] = useState<'loading' | 'active' | 'completed' | 'already_done'>('loading');
   const [selectedQuizOption, setSelectedQuizOption] = useState<number | null>(null);
   const [isQuizCorrect, setIsQuizCorrect] = useState<boolean | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
 
-  // --- NEW PRACTICE TAB STATE ---
   const [practiceTab, setPracticeTab] = useState<'quiz' | 'interview' | 'simulation'>('quiz');
   const [practiceSearch, setPracticeSearch] = useState('');
   const [practiceTopics, setPracticeTopics] = useState<string[]>([]);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   
-  // Question Banks (Full Data)
   const [practiceQuestionBank, setPracticeQuestionBank] = useState<PracticeQuestion[]>([]);
   const [interviewQuestionBank, setInterviewQuestionBank] = useState<InterviewQuestion[]>([]);
-  
-  // Filtered/Displayed Questions
   const [practiceQuestions, setPracticeQuestions] = useState<PracticeQuestion[]>([]);
   const [interviewQuestions, setInterviewQuestions] = useState<InterviewQuestion[]>([]);
   
   const [visibleAnswers, setVisibleAnswers] = useState<Set<string>>(new Set());
   const [companyFilter, setCompanyFilter] = useState<string>('All');
   
-  // Custom AI Generator State
   const [customGenTopic, setCustomGenTopic] = useState('');
   const [customGenDifficulty, setCustomGenDifficulty] = useState('Medium');
 
   const [simulationScenario, setSimulationScenario] = useState<SimulationScenario | null>(null);
   const [simAnswer, setSimAnswer] = useState<number | null>(null);
-  
   const [isPracticeLoading, setIsPracticeLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  // --- END PRACTICE TAB STATE ---
 
-  // Adaptation State
   const [isAdapting, setIsAdapting] = useState(false);
-
-  // Phase Completion State
   const [showPhaseCompletionModal, setShowPhaseCompletionModal] = useState(false);
   
-  // Date Edit State
   const [showDateEditModal, setShowDateEditModal] = useState(false);
   const [pendingTargetDate, setPendingTargetDate] = useState('');
   const [showDateStrategyModal, setShowDateStrategyModal] = useState(false);
   const [dateStrategyType, setDateStrategyType] = useState<'extension' | 'shortening' | null>(null);
 
-  // Feedback State
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
-
-  // Critical Action Confirmation State
   const [confirmAction, setConfirmAction] = useState<{type: 'reset_all' | 'delete_account', inputValue: string} | null>(null);
   const [careerToDelete, setCareerToDelete] = useState<string | null>(null);
-
-  // Career Stats (Progress Map)
   const [careerStats, setCareerStats] = useState<Record<string, { progress: number, daysLeft: number }>>({});
   
-  // Chatbot State
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [isChatTyping, setIsChatTyping] = useState(false);
-  
-  // Home Search
   const [homeSearchQuery, setHomeSearchQuery] = useState('');
 
-  // Get current career details
   const currentCareerDetails = user.activeCareers.find(c => c.careerId === career.id);
 
-  const showToastMsg = (msg: string) => {
-      setToast({ message: msg, type: 'success' });
-      setTimeout(() => setToast(null), 3000);
-  };
+  const showToastMsg = (msg: string) => { setToast({ message: msg, type: 'success' }); setTimeout(() => setToast(null), 3000); };
 
-  // Theme Init and Switching
-  useEffect(() => {
-      const themes = ['theme-emerald', 'theme-rose', 'theme-amber', 'theme-cyan'];
-      document.body.classList.remove(...themes);
-      if (user.theme && user.theme !== 'indigo') { 
-          document.body.classList.add(`theme-${user.theme}`);
-      }
-  }, [user.theme]);
-
-  const setAccentColor = (color: 'indigo' | 'emerald' | 'rose' | 'amber' | 'cyan') => {
-      const updatedUser = { ...user, theme: color };
-      setUser(updatedUser);
-      saveUser(updatedUser);
-  };
+  useEffect(() => { const themes = ['theme-emerald', 'theme-rose', 'theme-amber', 'theme-cyan']; document.body.classList.remove(...themes); if (user.theme && user.theme !== 'indigo') { document.body.classList.add(`theme-${user.theme}`); } }, [user.theme]);
+  const setAccentColor = (color: 'indigo' | 'emerald' | 'rose' | 'amber' | 'cyan') => { const updatedUser = { ...user, theme: color }; setUser(updatedUser); saveUser(updatedUser); };
   
-  // Chat Context Effect
-  useEffect(() => {
-      const initialGreeting = {
-          id: Date.now().toString(),
-          role: 'bot' as const,
-          text: `Hello ${user.username}! I see you're currently focusing on ${career.title}. How can I assist you with your roadmap or career questions today?`,
-          timestamp: Date.now()
-      };
-      
-      setChatHistory(prev => {
-          if (prev.length === 0) return [initialGreeting];
-          return [...prev, {
-              id: Date.now().toString(),
-              role: 'bot',
-              text: `Switched focus to ${career.title}.`,
-              timestamp: Date.now()
-          }];
-      });
-  }, [career.id, user.username]);
+  useEffect(() => { const initialGreeting = { id: Date.now().toString(), role: 'bot' as const, text: `Hello ${user.username}! I see you're currently focusing on ${career.title}. How can I assist you with your roadmap or career questions today?`, timestamp: Date.now() }; setChatHistory(prev => { if (prev.length === 0) return [initialGreeting]; return [...prev, { id: Date.now().toString(), role: 'bot', text: `Switched focus to ${career.title}.`, timestamp: Date.now() }]; }); }, [career.id, user.username]);
 
-  const handleSendMessage = async (text: string) => {
-      const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', text, timestamp: Date.now() };
-      setChatHistory(prev => [...prev, userMsg]);
-      setIsChatTyping(true);
-      
-      try {
-          const responseText = await generateChatResponse(text, career.title, chatHistory);
-          const botMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'bot', text: responseText, timestamp: Date.now() };
-          setChatHistory(prev => [...prev, botMsg]);
-      } catch (e) {
-           const errMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'bot', text: "I'm having trouble connecting right now. Please try again.", timestamp: Date.now() };
-           setChatHistory(prev => [...prev, errMsg]);
-      } finally {
-          setIsChatTyping(false);
-      }
-  };
+  const handleSendMessage = async (text: string) => { const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', text, timestamp: Date.now() }; setChatHistory(prev => [...prev, userMsg]); setIsChatTyping(true); try { const responseText = await generateChatResponse(text, career.title, chatHistory); const botMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'bot', text: responseText, timestamp: Date.now() }; setChatHistory(prev => [...prev, botMsg]); } catch (e) { const errMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'bot', text: "I'm having trouble connecting right now. Please try again.", timestamp: Date.now() }; setChatHistory(prev => [...prev, errMsg]); } finally { setIsChatTyping(false); } };
 
-  useEffect(() => {
-    if (roadmap) {
-      let total = 0;
-      let completed = 0;
-      roadmap.forEach(phase => {
-        phase.items.forEach(item => {
-          total++;
-          if (item.status === 'completed') completed++;
-        });
-      });
-      
-      const calculatedProgress = total === 0 ? 0 : Math.round((completed / total) * 100);
-      if (calculatedProgress === 100 && progress !== 100 && progress !== 0) {
-          setShowCelebration(true);
-      }
-      setProgress(calculatedProgress);
-    } else {
-        setProgress(0);
-    }
-  }, [roadmap, progress]);
+  useEffect(() => { if (roadmap) { let total = 0; let completed = 0; roadmap.forEach(phase => { phase.items.forEach(item => { total++; if (item.status === 'completed') completed++; }); }); const calculatedProgress = total === 0 ? 0 : Math.round((completed / total) * 100); if (calculatedProgress === 100 && progress !== 100 && progress !== 0) { setShowCelebration(true); } setProgress(calculatedProgress); } else { setProgress(0); } }, [roadmap, progress]);
 
-  useEffect(() => {
-      if (activeTab === 'career') {
-          const stats: Record<string, { progress: number, daysLeft: number }> = {};
-          user.activeCareers.forEach(c => {
-              const r = getRoadmap(user.id, c.careerId) || [];
-              let total = 0;
-              let completed = 0;
-              r.forEach(p => {
-                  p.items.forEach(i => {
-                      total++;
-                      if (i.status === 'completed') completed++;
-                  });
-              });
-              
-              const prog = total === 0 ? 0 : Math.round((completed / total) * 100);
-              const parts = c.targetCompletionDate.split('-');
-              let days = 0;
-              if (parts.length === 3) {
-                const targetDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0); 
-                const today = new Date();
-                today.setHours(12, 0, 0, 0);
-                const diff = Math.round((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                days = diff >= 0 ? diff + 1 : 0;
-              }
-              stats[c.careerId] = { progress: prog, daysLeft: days };
-          });
-          setCareerStats(stats);
-      }
-  }, [activeTab, user]);
+  useEffect(() => { if (activeTab === 'career') { const stats: Record<string, { progress: number, daysLeft: number }> = {}; user.activeCareers.forEach(c => { const r = getRoadmap(user.id, c.careerId) || []; let total = 0; let completed = 0; r.forEach(p => { p.items.forEach(i => { total++; if (i.status === 'completed') completed++; }); }); const prog = total === 0 ? 0 : Math.round((completed / total) * 100); const parts = c.targetCompletionDate.split('-'); let days = 0; if (parts.length === 3) { const targetDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0); const today = new Date(); today.setHours(12, 0, 0, 0); const diff = Math.round((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)); days = diff >= 0 ? diff + 1 : 0; } stats[c.careerId] = { progress: prog, daysLeft: days }; }); setCareerStats(stats); } }, [activeTab, user]);
 
-  const loadNews = async (query?: string) => {
-      if (!career?.title) return;
-      const searchTopic = query || career.title;
-      if (!query) {
-          const cachedNews = getNewsCache(user.id, career.id);
-          if (cachedNews && cachedNews.length > 0) {
-              setNews(cachedNews);
-              return;
-          }
-      }
-      setIsNewsLoading(true);
-      setNews([]); 
-      try {
-        const newsItems = await fetchTechNews(searchTopic);
-        setNews(newsItems);
-        if (!query) saveNewsCache(user.id, career.id, newsItems);
-      } catch (e) {
-        console.error("Failed to load news", e);
-      } finally {
-        setIsNewsLoading(false);
-      }
-  };
+  const loadNews = async (query?: string) => { if (!career?.title) return; const searchTopic = query || career.title; if (!query) { const cachedNews = getNewsCache(user.id, career.id); if (cachedNews && cachedNews.length > 0) { setNews(cachedNews); return; } } setIsNewsLoading(true); setNews([]); try { const newsItems = await fetchTechNews(searchTopic); setNews(newsItems); if (!query) saveNewsCache(user.id, career.id, newsItems); } catch (e) { console.error("Failed to load news", e); } finally { setIsNewsLoading(false); } };
+  useEffect(() => { if (activeTab === 'home') loadNews(); }, [career.id, career.title, activeTab, user.id]);
+  const handleHomeSearch = () => { loadNews(homeSearchQuery); };
 
-  useEffect(() => {
-    if (activeTab === 'home') loadNews();
-  }, [career.id, career.title, activeTab, user.id]);
+  const handlePracticeSearch = async () => { setIsPracticeLoading(true); if (practiceTab === 'quiz') { const qs = await generatePracticeQuestions(career.title, selectedTopic || undefined, practiceSearch); setPracticeQuestionBank(qs); setPracticeQuestions(qs); } else if (practiceTab === 'interview') { const params = companyFilter === 'AI Challenge' ? { topic: customGenTopic || career.title, difficulty: customGenDifficulty } : undefined; const qs = await generateCompanyInterviewQuestions(career.title, companyFilter, params); setInterviewQuestions(qs); } else { const sim = await generateSimulationScenario(career.title); setSimulationScenario(sim); setSimAnswer(null); } setIsPracticeLoading(false); };
 
-  const handleHomeSearch = () => {
-      loadNews(homeSearchQuery);
-  };
+  useEffect(() => { const initPracticeBank = async () => { if (activeTab === 'practice') { setIsPracticeLoading(true); const savedData = getPracticeData(user.id, career.id); if (savedData && savedData.questions.length > 0) { setPracticeTopics(savedData.topics || []); setPracticeQuestionBank(savedData.questions || []); setInterviewQuestionBank(savedData.interviews || []); } else { try { const [topics, qs, iqs] = await Promise.all([generatePracticeTopics(career.title), generatePracticeQuestions(career.title), generateCompanyInterviewQuestions(career.title, 'All')]); setPracticeTopics(topics); setPracticeQuestionBank(qs); setInterviewQuestionBank(iqs); savePracticeData(user.id, career.id, { topics, questions: qs, interviews: iqs }); } catch(e) { console.error("Failed to init practice bank", e); } } setIsPracticeLoading(false); } }; initPracticeBank(); }, [career.id, activeTab]);
 
-  const handlePracticeSearch = () => {};
+  useEffect(() => { let filteredQs = practiceQuestionBank; if (selectedTopic) filteredQs = practiceQuestionBank.filter(q => q.topic === selectedTopic); if (practiceSearch && practiceTab === 'quiz') filteredQs = practiceQuestionBank.filter(q => q.question.toLowerCase().includes(practiceSearch.toLowerCase())); setPracticeQuestions(filteredQs); let filteredIQs = interviewQuestionBank; if (companyFilter !== 'All' && companyFilter !== 'AI Challenge') filteredIQs = interviewQuestionBank.filter(q => q.company === companyFilter); if (practiceSearch && practiceTab === 'interview') filteredIQs = interviewQuestionBank.filter(q => q.question.toLowerCase().includes(practiceSearch.toLowerCase())); setInterviewQuestions(filteredIQs); }, [selectedTopic, companyFilter, practiceSearch, practiceQuestionBank, interviewQuestionBank, practiceTab]);
 
-  // --- REFACTORED PRACTICE TAB LOGIC ---
-  useEffect(() => {
-    const initPracticeBank = async () => {
-        if (activeTab === 'practice') {
-            setIsPracticeLoading(true);
-            const savedData = getPracticeData(user.id, career.id);
-            
-            if (savedData && savedData.questions.length > 0) {
-                setPracticeTopics(savedData.topics || []);
-                setPracticeQuestionBank(savedData.questions || []);
-                setInterviewQuestionBank(savedData.interviews || []);
-            } else {
-                try {
-                    const [topics, qs, iqs] = await Promise.all([
-                        generatePracticeTopics(career.title),
-                        generatePracticeQuestions(career.title),
-                        generateCompanyInterviewQuestions(career.title, 'All')
-                    ]);
-                    
-                    setPracticeTopics(topics);
-                    setPracticeQuestionBank(qs);
-                    setInterviewQuestionBank(iqs);
-                    
-                    savePracticeData(user.id, career.id, {
-                        topics: topics,
-                        questions: qs,
-                        interviews: iqs
-                    });
-                } catch(e) { console.error("Failed to init practice bank", e); }
-            }
-            setIsPracticeLoading(false);
-        }
-    };
-    initPracticeBank();
-  }, [career.id, activeTab]);
+  const handleLoadMorePractice = async () => { setIsLoadingMore(true); try { const newQs = await generatePracticeQuestions(career.title, selectedTopic || undefined); const updatedBank = [...practiceQuestionBank, ...newQs]; setPracticeQuestionBank(updatedBank); savePracticeData(user.id, career.id, { questions: updatedBank }); } catch(e) { console.error(e); } finally { setIsLoadingMore(false); } };
+  const handleLoadMoreInterview = async () => { setIsLoadingMore(true); try { const newQs = await generateCompanyInterviewQuestions(career.title, companyFilter); const updatedBank = [...interviewQuestionBank, ...newQs]; setInterviewQuestionBank(updatedBank); savePracticeData(user.id, career.id, { interviews: updatedBank }); } catch(e) { console.error(e); } finally { setIsLoadingMore(false); } };
+  const handleAICustomChallenge = async () => { setIsPracticeLoading(true); try { const params = { topic: customGenTopic || career.title, difficulty: customGenDifficulty }; const iqs = await generateCompanyInterviewQuestions(career.title, 'AI Challenge', params); setInterviewQuestions(iqs); } catch (e) { console.error(e); } finally { setIsPracticeLoading(false); } };
 
-  // Client-side filtering effect
-  useEffect(() => {
-      let filteredQs = practiceQuestionBank;
-      if (selectedTopic) {
-          filteredQs = practiceQuestionBank.filter(q => q.topic === selectedTopic);
-      }
-      if (practiceSearch && practiceTab === 'quiz') {
-          filteredQs = practiceQuestionBank.filter(q => q.question.toLowerCase().includes(practiceSearch.toLowerCase()));
-      }
-      setPracticeQuestions(filteredQs);
-
-      let filteredIQs = interviewQuestionBank;
-      if (companyFilter !== 'All' && companyFilter !== 'AI Challenge') {
-          filteredIQs = interviewQuestionBank.filter(q => q.company === companyFilter);
-      }
-       if (practiceSearch && practiceTab === 'interview') {
-          filteredIQs = interviewQuestionBank.filter(q => q.question.toLowerCase().includes(practiceSearch.toLowerCase()));
-      }
-      setInterviewQuestions(filteredIQs);
-  }, [selectedTopic, companyFilter, practiceSearch, practiceQuestionBank, interviewQuestionBank, practiceTab]);
-
-  const handleLoadMorePractice = async () => {
-    setIsLoadingMore(true);
-    try {
-        const newQs = await generatePracticeQuestions(career.title, selectedTopic || undefined);
-        const updatedBank = [...practiceQuestionBank, ...newQs];
-        setPracticeQuestionBank(updatedBank);
-        savePracticeData(user.id, career.id, { questions: updatedBank });
-    } catch(e) { console.error(e); } finally { setIsLoadingMore(false); }
-  };
-
-  const handleLoadMoreInterview = async () => {
-    setIsLoadingMore(true);
-    try {
-        const newQs = await generateCompanyInterviewQuestions(career.title, companyFilter);
-        const updatedBank = [...interviewQuestionBank, ...newQs];
-        setInterviewQuestionBank(updatedBank);
-        savePracticeData(user.id, career.id, { interviews: updatedBank });
-    } catch(e) { console.error(e); } finally { setIsLoadingMore(false); }
-  };
-  
-  const handleAICustomChallenge = async () => {
-      setIsPracticeLoading(true);
-      try {
-          const params = { topic: customGenTopic || career.title, difficulty: customGenDifficulty };
-          const iqs = await generateCompanyInterviewQuestions(career.title, 'AI Challenge', params);
-          setInterviewQuestions(iqs); // Show only these, don't add to bank
-      } catch (e) { console.error(e); } finally { setIsPracticeLoading(false); }
-  };
-  
-  // --- END REFACTORED PRACTICE LOGIC ---
-
-
-  useEffect(() => {
-    const checkDailyQuiz = async () => {
-        if (activeTab !== 'home') return;
-        const today = new Date().toISOString().split('T')[0];
-        
-        if (user.lastQuizDate === today) {
-            setQuizState('already_done');
-            return;
-        }
-
-        const cachedQuiz = getDailyQuizCache(user.id, career.id);
-        if (cachedQuiz) {
-            setDailyQuiz(cachedQuiz);
-            setQuizState('active');
-            return;
-        }
-
-        setQuizState('loading');
-        try {
-            const quiz = await generateDailyQuiz(career.title);
-            if (quiz) {
-                setDailyQuiz(quiz);
-                saveDailyQuizCache(user.id, career.id, quiz);
-                setQuizState('active');
-            } else {
-                setQuizState('already_done');
-            }
-        } catch (e) {
-            setQuizState('already_done');
-        }
-    };
-    checkDailyQuiz();
-  }, [activeTab, career.title, user.lastQuizDate, user.id, career.id]);
-
-  const handleQuizAnswer = (index: number) => {
-      if (!dailyQuiz || selectedQuizOption !== null) return;
-      setSelectedQuizOption(index);
-      const isRight = index === dailyQuiz.correctIndex;
-      setIsQuizCorrect(isRight);
-
-      if (isRight) {
-          setShowConfetti(true);
-          const today = new Date().toISOString().split('T')[0];
-          let newStreak = (user.streak || 0);
-          if (user.lastQuizDate) {
-              const last = new Date(user.lastQuizDate);
-              const yesterday = new Date();
-              yesterday.setDate(yesterday.getDate() - 1);
-              const yesterdayStr = yesterday.toISOString().split('T')[0];
-              if (user.lastQuizDate === yesterdayStr) newStreak += 1;
-              else newStreak = 1; 
-          } else {
-              newStreak = 1;
-          }
-
-          const newXp = (user.xp || 0) + 10;
-          const updatedUser = { ...user, streak: newStreak, xp: newXp, lastQuizDate: today };
-          setUser(updatedUser);
-          saveUser(updatedUser);
-          setTimeout(() => setShowConfetti(false), 3000);
-      } else {
-          const today = new Date().toISOString().split('T')[0];
-          const updatedUser = { ...user, lastQuizDate: today, streak: 0 }; 
-          setUser(updatedUser);
-          saveUser(updatedUser);
-      }
-      setTimeout(() => setQuizState('completed'), 2000);
-  };
-
-  const handleSimulationSearch = async () => {
-    setIsPracticeLoading(true);
-    const sim = await generateSimulationScenario(career.title);
-    setSimulationScenario(sim);
-    setSimAnswer(null);
-    setIsPracticeLoading(false);
-  }
-
-  const handleSimAnswer = (index: number) => {
-      if (!simulationScenario || simAnswer !== null) return;
-      setSimAnswer(index);
-      if (index === simulationScenario.correctIndex) {
-          const updatedUser = { ...user, xp: (user.xp || 0) + 10 };
-          setUser(updatedUser);
-          saveUser(updatedUser);
-          showToastMsg("Sim Success! +10 XP");
-      }
-  };
-
-  const toggleAnswerReveal = (id: string) => {
-      const next = new Set(visibleAnswers);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      setVisibleAnswers(next);
-  };
-
-  const handleSubscribe = (plan: 'monthly' | 'yearly') => {
-    const updatedUser = { ...user, subscriptionStatus: plan };
-    setUser(updatedUser);
-    saveUser(updatedUser);
-  };
-
-  const handleProgress = (itemId: string) => {
-    if (!roadmap) return;
-    const now = Date.now();
-
-    // Find which phase the item belongs to and check its "before" completion status
-    let phaseIndexToCheck = -1;
-    let wasPhaseCompleted = false;
-    for (let i = 0; i < roadmap.length; i++) {
-        if (roadmap[i].items.some(item => item.id === itemId)) {
-            phaseIndexToCheck = i;
-            wasPhaseCompleted = roadmap[i].items.every(item => item.status === 'completed');
-            break;
-        }
-    }
-
-    const newRoadmap = roadmap.map(phase => ({
-      ...phase,
-      items: phase.items.map(item => 
-        item.id === itemId 
-          ? { 
-              ...item, 
-              status: item.status === 'completed' ? 'pending' : 'completed',
-              completedAt: item.status === 'completed' ? undefined : now 
-            } as RoadmapItem
-          : item
-      )
-    }));
-    
-    setRoadmap(newRoadmap);
-    saveRoadmap(user.id, career.id, newRoadmap);
-
-    // Now check the "after" completion status
-    if (phaseIndexToCheck !== -1) {
-        const isNowCompleted = newRoadmap[phaseIndexToCheck].items.every(i => i.status === 'completed');
-        const isAllCompleted = newRoadmap.every(p => p.items.every(i => i.status === 'completed'));
-
-        if (isNowCompleted && !wasPhaseCompleted && !isAllCompleted) {
-            // Use a timeout to ensure the state update has rendered before showing modal
-            setTimeout(() => setShowPhaseCompletionModal(true), 100);
-        }
-    }
-  };
-
-  const handleResetPhase = (phaseIndex: number) => {
-      if (!roadmap) return;
-      const newRoadmap = roadmap.map((phase, idx) => {
-          if (idx === phaseIndex) {
-              return {
-                  ...phase,
-                  items: phase.items.map(item => ({
-                      ...item,
-                      status: 'pending' as const,
-                      completedAt: undefined
-                  }))
-              };
-          }
-          return phase;
-      });
-      setRoadmap(newRoadmap);
-      saveRoadmap(user.id, career.id, newRoadmap);
-  };
-
-  const handleResetRoadmap = () => {
-      if (!roadmap) return;
-      const resetMap = roadmap.map(phase => ({
-          ...phase,
-          items: phase.items.map(item => ({
-              ...item, 
-              status: 'pending' as const, 
-              completedAt: undefined
-          } as RoadmapItem))
-      }));
-      setRoadmap(resetMap);
-      saveRoadmap(user.id, career.id, resetMap);
-  };
-
-  const executeResetAll = () => {
-      user.activeCareers.forEach(c => {
-          const r = getRoadmap(user.id, c.careerId);
-          if (r) {
-              const resetR = r.map(p => ({...p, items: p.items.map(i => ({...i, status: 'pending', completedAt: undefined} as RoadmapItem))}));
-              saveRoadmap(user.id, c.careerId, resetR);
-          }
-      });
-      handleResetRoadmap();
-      showToastMsg("All career progress has been reset.");
-      setConfirmAction(null);
-  };
-
-  const executeDeleteAccount = () => {
-      onDeleteAccount();
-      setConfirmAction(null);
-  };
-
-  const handleAdaptation = async (type: any, customTargetDate?: string) => {
-      if (!currentCareerDetails || !roadmap) return;
-      
-      // Close modals before starting
-      setShowDateStrategyModal(false);
-      setShowPhaseCompletionModal(false);
-      setIsAdapting(true);
-
-      try {
-          const completedPhases = roadmap.filter(p => p.items.every(i => i.status === 'completed'));
-          const lastCompletedPhaseIndex = completedPhases.length; 
-          const { educationYear, targetCompletionDate, experienceLevel, focusAreas } = currentCareerDetails;
-          let targetDateToUse = customTargetDate || targetCompletionDate;
-
-          // If date changed via modal, update user profile
-          if (targetDateToUse !== targetCompletionDate) {
-              const updatedCareers = user.activeCareers.map(c => 
-                  c.careerId === career.id ? { ...c, targetCompletionDate: targetDateToUse } : c
-              );
-              const updatedUser = { ...user, activeCareers: updatedCareers };
-              setUser(updatedUser);
-              saveUser(updatedUser);
-          }
-
-          const contextStr = `User has completed ${completedPhases.length} phases. Proceed to generate the REMAINING phases starting from Phase ${lastCompletedPhaseIndex + 1}.`;
-          const newPhases = await generateRoadmap(career.title, educationYear, targetDateToUse, experienceLevel, focusAreas || '', { type, progressStr: contextStr, startingPhaseNumber: lastCompletedPhaseIndex + 1 });
-          
-          const finalMap = [...completedPhases, ...newPhases];
-          setRoadmap(finalMap);
-          saveRoadmap(user.id, career.id, finalMap);
-          showToastMsg("Nova has re-architected your roadmap.");
-      } catch (e) {
-          console.error("Adaptation failed", e);
-          showToastMsg("AI is busy. Please try again later.");
-      } finally {
-          setIsAdapting(false);
-      }
-  };
-
-  const handleDateUpdateWithoutAI = (newDate: string) => {
-      if (!currentCareerDetails) return;
-      const updatedCareers = user.activeCareers.map(c => 
-          c.careerId === career.id ? { ...c, targetCompletionDate: newDate } : c
-      );
-      const updatedUser = { ...user, activeCareers: updatedCareers };
-      setUser(updatedUser);
-      saveUser(updatedUser);
-      setShowDateStrategyModal(false);
-      showToastMsg("Target date updated.");
-  };
-  
-  const handleFinishQuicker = () => {
-      if (!currentCareerDetails || !roadmap) return;
-      const daysNeeded = calculateRemainingDays(roadmap);
-      const newTarget = new Date();
-      newTarget.setHours(12, 0, 0, 0);
-      const offset = Math.max(0, daysNeeded - 1);
-      newTarget.setDate(newTarget.getDate() + offset);
-      
-      const year = newTarget.getFullYear();
-      const month = String(newTarget.getMonth() + 1).padStart(2, '0');
-      const day = String(newTarget.getDate()).padStart(2, '0');
-      const newDateStr = `${year}-${month}-${day}`;
-
-      const updatedCareers = user.activeCareers.map(c => c.careerId === career.id ? { ...c, targetCompletionDate: newDateStr } : c);
-      const u = { ...user, activeCareers: updatedCareers };
-      setUser(u);
-      saveUser(u);
-      setShowPhaseCompletionModal(false);
-      showToastMsg("Target date updated to finish quicker.");
-  };
-
-  const initiateDateUpdate = () => {
-      if (!pendingTargetDate || !currentCareerDetails) return;
-      const oldDateParts = currentCareerDetails.targetCompletionDate.split('-');
-      const oldDate = new Date(parseInt(oldDateParts[0]), parseInt(oldDateParts[1]) - 1, parseInt(oldDateParts[2])).getTime();
-      const newDateParts = pendingTargetDate.split('-');
-      const newDate = new Date(parseInt(newDateParts[0]), parseInt(newDateParts[1]) - 1, parseInt(newDateParts[2])).getTime();
-      
-      setShowDateEditModal(false);
-      setShowDateStrategyModal(true);
-      setDateStrategyType(newDate > oldDate ? 'extension' : 'shortening');
-  };
-
-  const handleSwitchCareer = (careerId: string) => {
-    setIsRoadmapLoading(true);
-    setShowCareerMenu(false);
-    setRoadmap(null);
-    setNews([]); 
-    setTimeout(() => {
-        const savedCareer = getCareerData(user.id, careerId);
-        const savedRoadmap = getRoadmap(user.id, careerId);
-        if (savedCareer) {
-          setCareer(savedCareer);
-          setRoadmap(savedRoadmap || []); 
-          const updatedUser = { ...user, currentCareerId: careerId };
-          setUser(updatedUser);
-          saveUser(updatedUser);
-          showToastMsg(`Nova: Switched focus to ${savedCareer.title}`);
-        }
-        setIsRoadmapLoading(false);
-        setActiveTab('home'); 
-    }, 50);
-  };
-
-  const handleSwitchCareerFromRoadmap = (careerId: string) => {
-    setIsRoadmapLoading(true);
-    setRoadmap(null);
-    setTimeout(() => {
-        const savedCareer = getCareerData(user.id, careerId);
-        const savedRoadmap = getRoadmap(user.id, careerId);
-        if (savedCareer) {
-          setCareer(savedCareer);
-          setRoadmap(savedRoadmap || []);
-          const updatedUser = { ...user, currentCareerId: careerId };
-          setUser(updatedUser);
-          saveUser(updatedUser);
-          showToastMsg(`Nova: Switched focus to ${savedCareer.title}`);
-        }
-        setIsRoadmapLoading(false);
-    }, 50);
-  };
-
+  useEffect(() => { const checkDailyQuiz = async () => { if (activeTab !== 'home') return; const today = new Date().toISOString().split('T')[0]; if (user.lastQuizDate === today) { setQuizState('already_done'); return; } const cachedQuiz = getDailyQuizCache(user.id, career.id); if (cachedQuiz) { setDailyQuiz(cachedQuiz); setQuizState('active'); return; } setQuizState('loading'); try { const quiz = await generateDailyQuiz(career.title); if (quiz) { setDailyQuiz(quiz); saveDailyQuizCache(user.id, career.id, quiz); setQuizState('active'); } else { setQuizState('already_done'); } } catch (e) { setQuizState('already_done'); } }; checkDailyQuiz(); }, [activeTab, career.title, user.lastQuizDate, user.id, career.id]);
+  const handleQuizAnswer = (index: number) => { if (!dailyQuiz || selectedQuizOption !== null) return; setSelectedQuizOption(index); const isRight = index === dailyQuiz.correctIndex; setIsQuizCorrect(isRight); if (isRight) { setShowConfetti(true); const today = new Date().toISOString().split('T')[0]; let newStreak = (user.streak || 0); if (user.lastQuizDate) { const last = new Date(user.lastQuizDate); const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1); const yesterdayStr = yesterday.toISOString().split('T')[0]; if (user.lastQuizDate === yesterdayStr) newStreak += 1; else newStreak = 1; } else { newStreak = 1; } const newXp = (user.xp || 0) + 10; const updatedUser = { ...user, streak: newStreak, xp: newXp, lastQuizDate: today }; setUser(updatedUser); saveUser(updatedUser); setTimeout(() => setShowConfetti(false), 3000); } else { const today = new Date().toISOString().split('T')[0]; const updatedUser = { ...user, lastQuizDate: today, streak: 0 }; setUser(updatedUser); saveUser(updatedUser); } setTimeout(() => setQuizState('completed'), 2000); };
+  const handleSimulationSearch = async () => { setIsPracticeLoading(true); const sim = await generateSimulationScenario(career.title); setSimulationScenario(sim); setSimAnswer(null); setIsPracticeLoading(false); }
+  const handleSimAnswer = (index: number) => { if (!simulationScenario || simAnswer !== null) return; setSimAnswer(index); if (index === simulationScenario.correctIndex) { const updatedUser = { ...user, xp: (user.xp || 0) + 10 }; setUser(updatedUser); saveUser(updatedUser); showToastMsg("Sim Success! +10 XP"); } };
+  const toggleAnswerReveal = (id: string) => { const next = new Set(visibleAnswers); if (next.has(id)) next.delete(id); else next.add(id); setVisibleAnswers(next); };
+  const handleSubscribe = (plan: 'monthly' | 'yearly') => { const updatedUser = { ...user, subscriptionStatus: plan }; setUser(updatedUser); saveUser(updatedUser); };
+  const handleProgress = (itemId: string) => { if (!roadmap) return; const now = Date.now(); let phaseIndexToCheck = -1; let wasPhaseCompleted = false; for (let i = 0; i < roadmap.length; i++) { if (roadmap[i].items.some(item => item.id === itemId)) { phaseIndexToCheck = i; wasPhaseCompleted = roadmap[i].items.every(item => item.status === 'completed'); break; } } const newRoadmap = roadmap.map(phase => ({ ...phase, items: phase.items.map(item => item.id === itemId ? { ...item, status: item.status === 'completed' ? 'pending' : 'completed', completedAt: item.status === 'completed' ? undefined : now } as RoadmapItem : item) })); setRoadmap(newRoadmap); saveRoadmap(user.id, career.id, newRoadmap); if (phaseIndexToCheck !== -1) { const isNowCompleted = newRoadmap[phaseIndexToCheck].items.every(i => i.status === 'completed'); const isAllCompleted = newRoadmap.every(p => p.items.every(i => i.status === 'completed')); if (isNowCompleted && !wasPhaseCompleted && !isAllCompleted) { setTimeout(() => setShowPhaseCompletionModal(true), 100); } } };
+  const handleResetPhase = (phaseIndex: number) => { if (!roadmap) return; const newRoadmap = roadmap.map((phase, idx) => { if (idx === phaseIndex) { return { ...phase, items: phase.items.map(item => ({ ...item, status: 'pending' as const, completedAt: undefined })) }; } return phase; }); setRoadmap(newRoadmap); saveRoadmap(user.id, career.id, newRoadmap); };
+  const handleResetRoadmap = () => { if (!roadmap) return; const resetMap = roadmap.map(phase => ({ ...phase, items: phase.items.map(item => ({ ...item, status: 'pending' as const, completedAt: undefined } as RoadmapItem)) })); setRoadmap(resetMap); saveRoadmap(user.id, career.id, resetMap); };
+  const executeResetAll = () => { user.activeCareers.forEach(c => { const r = getRoadmap(user.id, c.careerId); if (r) { const resetR = r.map(p => ({...p, items: p.items.map(i => ({...i, status: 'pending', completedAt: undefined} as RoadmapItem))})); saveRoadmap(user.id, c.careerId, resetR); } }); handleResetRoadmap(); showToastMsg("All career progress has been reset."); setConfirmAction(null); };
+  const executeDeleteAccount = () => { onDeleteAccount(); setConfirmAction(null); };
+  const handleAdaptation = async (type: any, customTargetDate?: string) => { if (!currentCareerDetails || !roadmap) return; setShowDateStrategyModal(false); setShowPhaseCompletionModal(false); setIsAdapting(true); try { const completedPhases = roadmap.filter(p => p.items.every(i => i.status === 'completed')); const lastCompletedPhaseIndex = completedPhases.length; const { educationYear, targetCompletionDate, experienceLevel, focusAreas } = currentCareerDetails; let targetDateToUse = customTargetDate || targetCompletionDate; if (targetDateToUse !== targetCompletionDate) { const updatedCareers = user.activeCareers.map(c => c.careerId === career.id ? { ...c, targetCompletionDate: targetDateToUse } : c); const updatedUser = { ...user, activeCareers: updatedCareers }; setUser(updatedUser); saveUser(updatedUser); } const contextStr = `User has completed ${completedPhases.length} phases. Proceed to generate the REMAINING phases starting from Phase ${lastCompletedPhaseIndex + 1}.`; const newPhases = await generateRoadmap(career.title, educationYear, targetDateToUse, experienceLevel, focusAreas || '', { type, progressStr: contextStr, startingPhaseNumber: lastCompletedPhaseIndex + 1 }); const finalMap = [...completedPhases, ...newPhases]; setRoadmap(finalMap); saveRoadmap(user.id, career.id, finalMap); showToastMsg("Nova has re-architected your roadmap."); } catch (e) { console.error("Adaptation failed", e); showToastMsg("AI is busy. Please try again later."); } finally { setIsAdapting(false); } };
+  const handleDateUpdateWithoutAI = (newDate: string) => { if (!currentCareerDetails) return; const updatedCareers = user.activeCareers.map(c => c.careerId === career.id ? { ...c, targetCompletionDate: newDate } : c); const updatedUser = { ...user, activeCareers: updatedCareers }; setUser(updatedUser); saveUser(updatedUser); setShowDateStrategyModal(false); showToastMsg("Target date updated."); };
+  const handleFinishQuicker = () => { if (!currentCareerDetails || !roadmap) return; const daysNeeded = calculateRemainingDays(roadmap); const newTarget = new Date(); newTarget.setHours(12, 0, 0, 0); const offset = Math.max(0, daysNeeded - 1); newTarget.setDate(newTarget.getDate() + offset); const year = newTarget.getFullYear(); const month = String(newTarget.getMonth() + 1).padStart(2, '0'); const day = String(newTarget.getDate()).padStart(2, '0'); const newDateStr = `${year}-${month}-${day}`; const updatedCareers = user.activeCareers.map(c => c.careerId === career.id ? { ...c, targetCompletionDate: newDateStr } : c); const u = { ...user, activeCareers: updatedCareers }; setUser(u); saveUser(u); setShowPhaseCompletionModal(false); showToastMsg("Target date updated to finish quicker."); };
+  const initiateDateUpdate = () => { if (!pendingTargetDate || !currentCareerDetails) return; const oldDateParts = currentCareerDetails.targetCompletionDate.split('-'); const oldDate = new Date(parseInt(oldDateParts[0]), parseInt(oldDateParts[1]) - 1, parseInt(oldDateParts[2])).getTime(); const newDateParts = pendingTargetDate.split('-'); const newDate = new Date(parseInt(newDateParts[0]), parseInt(newDateParts[1]) - 1, parseInt(newDateParts[2])).getTime(); setShowDateEditModal(false); setShowDateStrategyModal(true); setDateStrategyType(newDate > oldDate ? 'extension' : 'shortening'); };
+  const handleSwitchCareer = (careerId: string) => { setIsRoadmapLoading(true); setShowCareerMenu(false); setRoadmap(null); setNews([]); setTimeout(() => { const savedCareer = getCareerData(user.id, careerId); const savedRoadmap = getRoadmap(user.id, careerId); if (savedCareer) { setCareer(savedCareer); setRoadmap(savedRoadmap || []); const updatedUser = { ...user, currentCareerId: careerId }; setUser(updatedUser); saveUser(updatedUser); showToastMsg(`Nova: Switched focus to ${savedCareer.title}`); } setIsRoadmapLoading(false); setActiveTab('home'); }, 50); };
+  const handleSwitchCareerFromRoadmap = (careerId: string) => { setIsRoadmapLoading(true); setRoadmap(null); setTimeout(() => { const savedCareer = getCareerData(user.id, careerId); const savedRoadmap = getRoadmap(user.id, careerId); if (savedCareer) { setCareer(savedCareer); setRoadmap(savedRoadmap || []); const updatedUser = { ...user, currentCareerId: careerId }; setUser(updatedUser); saveUser(updatedUser); showToastMsg(`Nova: Switched focus to ${savedCareer.title}`); } setIsRoadmapLoading(false); }, 50); };
   const handleDeleteCareerRequest = (careerId: string) => setCareerToDelete(careerId);
-  const executeDeleteCareer = () => {
-      if (!careerToDelete) return;
-      const careerId = careerToDelete;
-      const updatedActiveCareers = user.activeCareers.filter(c => c.careerId !== careerId);
-      localStorage.removeItem(`pathfinder_career_data_${user.id}_${careerId}`);
-      localStorage.removeItem(`pathfinder_roadmap_${user.id}_${careerId}`);
-      if (updatedActiveCareers.length === 0) {
-          const updatedUser = { ...user, activeCareers: [], currentCareerId: undefined };
-          setUser(updatedUser);
-          saveUser(updatedUser);
-          setCareer(null);
-          setRoadmap(null);
-          onAddCareer();
-          showToastMsg("Career deleted.");
-      } else {
-          let nextCareerId = user.currentCareerId;
-          if (careerId === user.currentCareerId) nextCareerId = updatedActiveCareers[0].careerId;
-          const updatedUser = { ...user, activeCareers: updatedActiveCareers, currentCareerId: nextCareerId };
-          setUser(updatedUser);
-          saveUser(updatedUser);
-          if (careerId === user.currentCareerId && nextCareerId) handleSwitchCareer(nextCareerId);
-          showToastMsg("Career deleted successfully.");
-      }
-      setCareerToDelete(null);
-  };
-
-  const getDaysRemaining = () => {
-      if (roadmap && roadmap.length > 0) {
-          const allCompleted = roadmap.every(phase => phase.items.every(item => item.status === 'completed'));
-          if (allCompleted) return 0;
-      }
-      if (!currentCareerDetails?.targetCompletionDate) return 0;
-      const parts = currentCareerDetails.targetCompletionDate.split('-');
-      if (parts.length !== 3) return 0;
-      const targetDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0); 
-      const today = new Date();
-      today.setHours(12, 0, 0, 0);
-      const diffTime = targetDate.getTime() - today.getTime();
-      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-      return diffDays >= 0 ? diffDays + 1 : 0;
-  }
-
+  const executeDeleteCareer = () => { if (!careerToDelete) return; const careerId = careerToDelete; const updatedActiveCareers = user.activeCareers.filter(c => c.careerId !== careerId); localStorage.removeItem(`pathfinder_career_data_${user.id}_${careerId}`); localStorage.removeItem(`pathfinder_roadmap_${user.id}_${careerId}`); if (updatedActiveCareers.length === 0) { const updatedUser = { ...user, activeCareers: [], currentCareerId: undefined }; setUser(updatedUser); saveUser(updatedUser); setCareer(null); setRoadmap(null); onAddCareer(); showToastMsg("Career deleted."); } else { let nextCareerId = user.currentCareerId; if (careerId === user.currentCareerId) nextCareerId = updatedActiveCareers[0].careerId; const updatedUser = { ...user, activeCareers: updatedActiveCareers, currentCareerId: nextCareerId }; setUser(updatedUser); saveUser(updatedUser); if (careerId === user.currentCareerId && nextCareerId) handleSwitchCareer(nextCareerId); showToastMsg("Career deleted successfully."); } setCareerToDelete(null); };
+  const getDaysRemaining = () => { if (roadmap && roadmap.length > 0) { const allCompleted = roadmap.every(phase => phase.items.every(item => item.status === 'completed')); if (allCompleted) return 0; } if (!currentCareerDetails?.targetCompletionDate) return 0; const parts = currentCareerDetails.targetCompletionDate.split('-'); if (parts.length !== 3) return 0; const targetDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0); const today = new Date(); today.setHours(12, 0, 0, 0); const diffTime = targetDate.getTime() - today.getTime(); const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); return diffDays >= 0 ? diffDays + 1 : 0; }
   const daysRemaining = getDaysRemaining();
   
   // FIX: Stricter day-based pacing calculation
@@ -896,18 +434,38 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       if (daysElapsed > totalDays) return { status: 'critical', days: daysElapsed - totalDays, message: 'Target date passed' } as const;
 
-      const expectedProgressRatio = daysElapsed / totalDays;
-      const actualProgressRatio = progress / 100;
+      // Calculate Total Items in Roadmap
+      let totalItems = 0;
+      let completedItems = 0;
+      if (roadmap) {
+          roadmap.forEach(p => p.items.forEach(i => {
+              totalItems++;
+              if (i.status === 'completed') completedItems++;
+          }));
+      }
 
-      // Positive diffRatio means ahead, negative means behind
-      const diffRatio = actualProgressRatio - expectedProgressRatio;
-      const diffDays = Math.round(diffRatio * totalDays);
+      if (totalItems === 0) return { status: 'on-track', days: 0, message: 'No tasks' } as const;
 
-      if (diffDays >= 1) {
-           return { status: 'ahead', days: diffDays, message: `${diffDays} days ahead` } as const;
+      // Calculate "Velocity" (Items per Day required)
+      const itemsPerDay = totalItems / totalDays;
+
+      // Calculate "Expected Items" based on days elapsed
+      const expectedItems = itemsPerDay * daysElapsed;
+
+      // Calculate Difference in ITEMS, then convert to DAYS
+      const diffItems = completedItems - expectedItems;
+      const diffDays = diffItems / itemsPerDay; // Positive = Ahead, Negative = Behind
+
+      // FIX: SHOW "AHEAD" IF >= 1 DAY AHEAD.
+      // Logic: If you finish Day 1 work on Day 1, diffDays is ~0. If you finish Day 2 work on Day 1, diffDays is ~1. 
+      // We only want to show "Ahead" if you are truly speeding (e.g. >1.9 days ahead).
+      // Use Math.floor to be conservative (e.g. 1.9 days -> 1 day ahead, 2.5 days -> 2 days ahead).
+      if (diffDays >= 1) { 
+           const d = Math.floor(diffDays);
+           return { status: 'ahead', days: d, message: `${d} day${d > 1 ? 's' : ''} ahead` } as const;
       } else if (diffDays <= -1) { 
-           // Strictly trigger behind if late by 1 day or more
-           return { status: 'behind', days: Math.abs(diffDays), message: `${Math.abs(diffDays)} days behind` } as const;
+           const d = Math.ceil(Math.abs(diffDays));
+           return { status: 'behind', days: d, message: `${d} day${d > 1 ? 's' : ''} behind` } as const;
       }
 
       return { status: 'on-track', days: 0, message: 'On track' } as const;
@@ -915,191 +473,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
   
   const pacing = getPacingStatus();
 
-  // --- MODAL COMPONENTS ---
-
-  const CelebrationModal = () => (
-      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-slate-900 border border-indigo-500 rounded-3xl p-8 max-w-md w-full text-center relative overflow-hidden shadow-[0_0_50px_rgba(99,102,241,0.3)]">
-              <div className="mx-auto w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mb-6 shadow-xl shadow-indigo-500/40">
-                  <PartyPopper className="h-10 w-10 text-white" />
-              </div>
-              <h2 className="text-3xl font-bold text-white mb-2">Career Mastered!</h2>
-              <p className="text-slate-300 mb-8">You have completed 100% of the {career.title} roadmap.</p>
-              <button onClick={() => setShowCelebration(false)} className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all">Continue Journey</button>
-          </div>
-      </div>
-  );
-  
-  const AdaptingOverlay = () => (
-    <div className="fixed inset-0 z-[120] flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-xl p-4 animate-fade-in">
-        <div className="relative mb-8">
-            <div className="absolute inset-0 bg-indigo-500/20 blur-3xl rounded-full animate-pulse"></div>
-            <div className="relative w-24 h-24 bg-slate-900 rounded-2xl flex items-center justify-center shadow-2xl shadow-indigo-500/20 border border-slate-800">
-                <BrainCircuit className="h-12 w-12 text-indigo-400 animate-[spin_3s_linear_infinite]" />
-            </div>
-        </div>
-        <h2 className="text-2xl font-bold text-white mb-2">Re-architecting your path...</h2>
-        <p className="text-slate-400 max-w-md mx-auto text-center">Nova is analyzing your progress and adapting the roadmap for optimal performance.</p>
-    </div>
-  );
-
-  const PhaseCompletionModal = () => (
-      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-slate-900 border border-emerald-500/30 rounded-3xl p-8 max-w-lg w-full text-center relative overflow-hidden shadow-2xl">
-              <div className="mx-auto w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mb-6 border border-emerald-500/30">
-                  <CheckCircle2 className="h-8 w-8 text-emerald-400" />
-              </div>
-              <h2 className="text-2xl font-bold text-white mb-2">Phase Completed!</h2>
-              <p className="text-slate-300 mb-8">
-                  {pacing.status === 'behind' ? "You've caught up a bit, but still behind schedule. Adapt?" : pacing.status === 'ahead' ? "You are crushing it! Want to speed up or go deeper?" : "Great pace! How would you like to proceed?"}
-              </p>
-              <div className="space-y-3 text-left">
-                  {pacing.status === 'behind' && (
-                      <>
-                        <button onClick={() => handleAdaptation('maintain_pressure')} className="w-full p-4 bg-slate-800 hover:bg-blue-900/20 border border-slate-700 hover:border-blue-500 rounded-xl transition-all flex items-center justify-between group">
-                            <div><div className="font-bold text-white mb-1">Maintain Timeline</div><div className="text-xs text-slate-400">Keep target date. Rearrange tasks to fit.</div></div><ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-blue-400" />
-                        </button>
-                        <button onClick={() => handleAdaptation('reduce_difficulty')} className="w-full p-4 bg-slate-800 hover:bg-emerald-900/20 border border-slate-700 hover:border-emerald-500 rounded-xl transition-all flex items-center justify-between group">
-                            <div><div className="font-bold text-white mb-1">Reduce Difficulty</div><div className="text-xs text-slate-400">Simplify remaining tasks to catch up.</div></div><ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-emerald-400" />
-                        </button>
-                      </>
-                  )}
-                  {pacing.status !== 'behind' && (
-                      <>
-                        <button onClick={() => handleAdaptation('relax_pace')} className="w-full p-4 bg-slate-800 hover:bg-blue-900/20 border border-slate-700 hover:border-blue-500 rounded-xl transition-all flex items-center justify-between group">
-                            <div><div className="font-bold text-white mb-1">Change Pace (Relax)</div><div className="text-xs text-slate-400">Keep date. Spread tasks out more.</div></div><ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-blue-400" />
-                        </button>
-                        <button onClick={() => handleAdaptation('increase_difficulty_same_time')} className="w-full p-4 bg-slate-800 hover:bg-purple-900/20 border border-slate-700 hover:border-purple-500 rounded-xl transition-all flex items-center justify-between group">
-                            <div><div className="font-bold text-white mb-1">Increase Difficulty</div><div className="text-xs text-slate-400">Keep date. Add advanced challenges.</div></div><ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-purple-400" />
-                        </button>
-                        <button onClick={handleFinishQuicker} className="w-full p-4 bg-slate-800 hover:bg-emerald-900/20 border border-slate-700 hover:border-emerald-500 rounded-xl transition-all flex items-center justify-between group">
-                            <div><div className="font-bold text-white mb-1">Finish Quicker</div><div className="text-xs text-slate-400">Update target date to now.</div></div><ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-emerald-400" />
-                        </button>
-                      </>
-                  )}
-              </div>
-              <button onClick={() => setShowPhaseCompletionModal(false)} className="mt-6 text-slate-500 text-sm hover:text-white">Dismiss</button>
-          </div>
-      </div>
-  );
-
-  const FeedbackModal = () => (
-      <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-md w-full relative shadow-2xl">
-              <button onClick={() => setShowFeedbackModal(false)} className="absolute top-4 right-4 p-2 text-slate-500 hover:text-white"><X className="h-5 w-5"/></button>
-              <h2 className="text-2xl font-bold text-white mb-2">Feedback</h2>
-              <p className="text-slate-400 mb-6 text-sm">Help improve PathFinder AI. Report a bug or suggest a feature.</p>
-              <textarea className="w-full h-32 bg-slate-950 border border-slate-800 rounded-xl p-4 text-white focus:border-indigo-500 outline-none resize-none mb-4" placeholder="Describe your issue or idea..." value={feedbackText} onChange={e => setFeedbackText(e.target.value)} />
-              <button onClick={() => { showToastMsg("Feedback sent! Nova thanks you."); setShowFeedbackModal(false); setFeedbackText(''); }} disabled={!feedbackText.trim()} className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all disabled:opacity-50">Send Feedback</button>
-          </div>
-      </div>
-  );
-
-  const DateEditModal = () => (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-md w-full relative shadow-2xl">
-              <button onClick={() => setShowDateEditModal(false)} className="absolute top-4 right-4 p-2 text-slate-500 hover:text-white"><X className="h-5 w-5"/></button>
-              <h2 className="text-2xl font-bold text-white mb-4">Update Target Date</h2>
-              <p className="text-slate-400 text-sm mb-6">Select a new completion date for your roadmap.</p>
-              <input 
-                type="date" 
-                className="w-full p-4 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-indigo-500 outline-none color-scheme-dark mb-6"
-                value={pendingTargetDate}
-                onChange={e => setPendingTargetDate(e.target.value)}
-              />
-              <button onClick={initiateDateUpdate} disabled={!pendingTargetDate} className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all disabled:opacity-50">
-                  Confirm Date & Adapt
-              </button>
-          </div>
-      </div>
-  );
-
-  const DateStrategyModal = () => (
-      <div className="fixed inset-0 z-[101] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-lg w-full text-center shadow-2xl">
-              <h2 className="text-2xl font-bold text-white mb-2">{dateStrategyType === 'extension' ? "Target Date Extended" : "Timeline Shortened"}</h2>
-              <p className="text-slate-300 mb-8">{dateStrategyType === 'extension' ? "You have more time. How should Nova adapt?" : "You have less time. How should Nova adapt?"}</p>
-              <div className="space-y-3 text-left">
-                  {dateStrategyType === 'extension' ? (
-                      <>
-                          <button onClick={() => handleAdaptation('increase_difficulty', pendingTargetDate)} className="w-full p-4 bg-slate-800 hover:bg-purple-900/20 border border-slate-700 hover:border-purple-500 rounded-xl transition-all flex items-center justify-between group">
-                              <div><div className="font-bold text-white mb-1">Increase Difficulty</div><div className="text-xs text-slate-400">Add new advanced tasks to fill extra days.</div></div><ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-purple-400" />
-                          </button>
-                          <button onClick={() => handleAdaptation('relax_pace', pendingTargetDate)} className="w-full p-4 bg-slate-800 hover:bg-blue-900/20 border border-slate-700 hover:border-blue-500 rounded-xl transition-all flex items-center justify-between group">
-                              <div><div className="font-bold text-white mb-1">Relax Pace</div><div className="text-xs text-slate-400">Redistribute existing tasks over more time.</div></div><ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-blue-400" />
-                          </button>
-                          <button onClick={() => handleDateUpdateWithoutAI(pendingTargetDate)} className="w-full p-4 bg-slate-800 hover:bg-emerald-900/20 border border-slate-700 hover:border-emerald-500 rounded-xl transition-all flex items-center justify-between group">
-                              <div><div className="font-bold text-white mb-1">Keep It Free</div><div className="text-xs text-slate-400">Just update the date. No roadmap changes.</div></div><ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-emerald-400" />
-                          </button>
-                      </>
-                  ) : (
-                      <>
-                          <button onClick={() => handleAdaptation('challenge_me', pendingTargetDate)} className="w-full p-4 bg-slate-800 hover:bg-orange-900/20 border border-slate-700 hover:border-orange-500 rounded-xl transition-all text-left flex items-center justify-between group">
-                              <div><div className="font-bold text-white mb-1">Challenge Me</div><div className="text-xs text-slate-400">Compress tasks to fit. Harder pace.</div></div><ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-orange-400" />
-                          </button>
-                          <button onClick={() => handleAdaptation('reduce_difficulty_and_scope', pendingTargetDate)} className="w-full p-4 bg-slate-800 hover:bg-blue-900/20 border border-slate-700 hover:border-blue-500 rounded-xl transition-all text-left flex items-center justify-between group">
-                              <div><div className="font-bold text-white mb-1">Reduce Difficulty</div><div className="text-xs text-slate-400">Simplify the roadmap to maintain pace.</div></div><ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-blue-400" />
-                          </button>
-                           <button onClick={() => handleDateUpdateWithoutAI(pendingTargetDate)} className="w-full p-4 bg-slate-800 hover:bg-emerald-900/20 border border-slate-700 hover:border-emerald-500 rounded-xl transition-all flex items-center justify-between group">
-                              <div><div className="font-bold text-white mb-1">Let It Free</div><div className="text-xs text-slate-400">Just update the date. No roadmap changes.</div></div><ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-emerald-400" />
-                          </button>
-                      </>
-                  )}
-              </div>
-              <button onClick={() => setShowDateStrategyModal(false)} className="mt-8 text-slate-500 text-sm hover:text-white">Cancel</button>
-          </div>
-      </div>
-  );
-
-  const ConfirmationModal = () => {
-      if (!confirmAction) return null;
-      const { type, inputValue } = confirmAction;
-      const requiredText = type === 'reset_all' ? 'RESET' : 'DELETE';
-      const isMatch = inputValue === requiredText;
-      return (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-fade-in">
-              <div className="bg-slate-900 border border-red-500/50 rounded-3xl p-8 max-w-sm w-full text-center relative shadow-2xl">
-                  <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <ShieldAlert className="h-8 w-8 text-red-500" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-2">Are you absolutely sure?</h3>
-                  <p className="text-slate-400 text-sm mb-6">{type === 'reset_all' ? "This will wipe all progress for all careers." : "This will permanently delete your account."}</p>
-                  <div className="mb-6 text-left">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Type <span className="text-white select-all">{requiredText}</span> to confirm</label>
-                      <input type="text" className="w-full p-4 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-red-500 outline-none uppercase tracking-widest font-bold text-center" value={inputValue} onChange={e => setConfirmAction({...confirmAction, inputValue: e.target.value.toUpperCase()})} placeholder={requiredText} autoFocus />
-                  </div>
-                  <div className="flex gap-3">
-                      <button onClick={() => setConfirmAction(null)} className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl">Cancel</button>
-                      <button onClick={type === 'reset_all' ? executeResetAll : executeDeleteAccount} disabled={!isMatch} className="flex-1 py-3 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-bold rounded-xl transition-all">{type === 'reset_all' ? 'Reset All' : 'Delete Account'}</button>
-                  </div>
-              </div>
-          </div>
-      );
-  };
-  
-  const DeleteCareerConfirmationModal = () => {
-      if (!careerToDelete) return null;
-      const careerTitle = user.activeCareers.find(c => c.careerId === careerToDelete)?.title || "this career";
-      return (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-fade-in">
-              <div className="bg-slate-900 border border-red-500/30 rounded-3xl p-6 max-w-sm w-full relative shadow-2xl">
-                  <div className="flex items-start gap-4 mb-4">
-                      <div className="p-3 bg-red-500/20 rounded-xl text-red-400 shrink-0"><Trash2 className="h-6 w-6" /></div>
-                      <div><h3 className="text-lg font-bold text-white">Delete Career?</h3><p className="text-slate-400 text-sm mt-1">Are you sure you want to remove <span className="text-white font-medium">"{careerTitle}"</span>?</p></div>
-                  </div>
-                  <div className="flex gap-3 mt-4">
-                      <button onClick={() => setCareerToDelete(null)} className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-sm">Cancel</button>
-                      <button onClick={executeDeleteCareer} className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl shadow-lg text-sm flex items-center justify-center gap-2">Delete</button>
-                  </div>
-              </div>
-          </div>
-      );
-  };
-
+  // Define renderContent explicitly inside the component scope
   const renderContent = () => {
     switch (activeTab) {
       case 'home':
-        // ... (Home Render Logic kept identical)
         return (
           <div className="space-y-8 animate-fade-in pb-10">
             <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
@@ -1173,7 +550,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
       case 'practice':
           return (
               <div className="bg-slate-900 rounded-3xl border border-slate-800 min-h-[80vh] flex flex-col overflow-hidden">
-                  {/* Practice Header & Nav */}
                   <div className="p-6 md:p-8 border-b border-slate-800 bg-slate-950/50">
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-6">
                            <div><h2 className="text-2xl font-bold text-white flex items-center gap-2"><GraduationCap className="h-6 w-6 text-indigo-500" /> Practice Arena</h2><p className="text-slate-400 text-sm mt-1">Master your skills in {career.title}</p></div>
@@ -1199,7 +575,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                   <div className="animate-fade-in space-y-8">
                                       <div><h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Suggested Topics</h3><div className="flex flex-wrap gap-2"><button onClick={() => setSelectedTopic(null)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${!selectedTopic ? 'bg-indigo-500 text-white border-indigo-500' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600'}`}>General</button>{practiceTopics.map(t => <button key={t} onClick={() => setSelectedTopic(t)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${selectedTopic === t ? 'bg-indigo-500 text-white border-indigo-500' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600'}`}>{t}</button>)}</div></div>
                                       <div className="space-y-6">
-                                          {practiceQuestions.length > 0 ? practiceQuestions.map((q, qIdx) => (<div key={q.id || qIdx} className="bg-slate-950 border border-slate-800 rounded-2xl p-6"><h4 className="text-lg font-bold text-white mb-4">{q.question}</h4><div className="grid gap-3">{q.options.map((opt, oIdx) => (<QuizOption key={`${q.id || qIdx}-${oIdx}`} option={opt} index={oIdx} correctIndex={q.correctIndex} explanation={q.explanation} />))}</div></div>)) : <div className="text-center py-10 text-slate-500">No questions available for this filter.</div>}
+                                          {practiceQuestions.length > 0 ? practiceQuestions.map((q, qIdx) => (
+                                              <PracticeQuestionCard key={q.id || qIdx} question={q} index={qIdx} />
+                                          )) : <div className="text-center py-10 text-slate-500">No questions available for this filter.</div>}
                                       </div>
                                       <button onClick={handleLoadMorePractice} disabled={isLoadingMore} className="w-full py-3 mt-4 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl flex items-center justify-center gap-2">{isLoadingMore ? <RefreshCw className="h-4 w-4 animate-spin"/> : <PlusCircle className="h-4 w-4"/>} Load More Questions</button>
                                   </div>
@@ -1208,8 +586,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                               {practiceTab === 'interview' && (
                                   <div className="animate-fade-in space-y-8">
                                       <div><h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Filter by Company / Mode</h3><div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide">{['All', 'Google', 'Amazon', 'Microsoft', 'Netflix', 'Meta', 'Startups', 'Aptitude', 'AI Challenge'].map(mode => (<button key={mode} onClick={() => setCompanyFilter(mode)} className={`px-4 py-2 rounded-full text-xs font-bold transition-all border whitespace-nowrap flex items-center gap-2 ${companyFilter === mode ? mode === 'AI Challenge' ? 'bg-fuchsia-600 text-white border-fuchsia-600 shadow-lg' : 'bg-indigo-600 text-white border-indigo-600 shadow-lg' : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-800'}`}>{mode === 'AI Challenge' && <Sparkles className="h-3 w-3" />}{mode === 'Aptitude' && <Cpu className="h-3 w-3" />}{mode}</button>))}</div></div>
-                                      
-                                      {/* AI CHALLENGE UI */}
                                       {companyFilter === 'AI Challenge' && (
                                           <div className="bg-slate-950 border border-fuchsia-500/30 rounded-2xl p-6 animate-fade-in relative overflow-hidden">
                                               <div className="absolute top-0 right-0 w-64 h-64 bg-fuchsia-500/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
@@ -1218,7 +594,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                               <button onClick={handleAICustomChallenge} className="w-full py-3 bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-fuchsia-900/20">Generate Challenge Questions</button>
                                           </div>
                                       )}
-
                                       <div className="grid md:grid-cols-2 gap-4">
                                           {interviewQuestions.length > 0 ? interviewQuestions.map((q, i) => (
                                               <div key={q.id || i} className="bg-slate-950 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between hover:border-indigo-500/50 transition-colors group">
@@ -1296,7 +671,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
           );
       case 'profile':
-          // ... (Profile Render Logic kept identical)
           return (
               <div className="space-y-8 pb-20 animate-fade-in">
                   <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 relative overflow-hidden">
@@ -1351,13 +725,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       <button onClick={() => setIsChatOpen(!isChatOpen)} className="fixed bottom-24 md:bottom-10 right-4 md:right-10 w-14 h-14 bg-indigo-600 hover:bg-indigo-500 rounded-full shadow-2xl shadow-indigo-500/40 flex items-center justify-center z-[60] transition-transform hover:scale-105 active:scale-95">{isChatOpen ? <X className="h-6 w-6 text-white" /> : <MessageSquare className="h-6 w-6 text-white" />}</button>
       <ChatWindow isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} careerTitle={career.title} history={chatHistory} onSend={handleSendMessage} isTyping={isChatTyping} />
-      {showCelebration && <CelebrationModal />}
-      {showPhaseCompletionModal && <PhaseCompletionModal />}
-      {showFeedbackModal && <FeedbackModal />}
-      {confirmAction && <ConfirmationModal />}
-      {careerToDelete && <DeleteCareerConfirmationModal />}
-      {showDateEditModal && <DateEditModal />}
-      {showDateStrategyModal && <DateStrategyModal />}
+      {showCelebration && <CelebrationModal onClose={() => setShowCelebration(false)} />}
+      {showPhaseCompletionModal && <PhaseCompletionModal onClose={() => setShowPhaseCompletionModal(false)} onUpdateDate={handleFinishQuicker} />}
+      {showFeedbackModal && <FeedbackModal onClose={() => setShowFeedbackModal(false)} text={feedbackText} setText={setFeedbackText} />}
+      {confirmAction && <ConfirmationModal action={confirmAction} onConfirm={confirmAction.type === 'reset_all' ? executeResetAll : executeDeleteAccount} onCancel={() => setConfirmAction(null)} />}
+      {careerToDelete && <DeleteCareerConfirmationModal onConfirm={executeDeleteCareer} onCancel={() => setCareerToDelete(null)} />}
+      {showDateEditModal && <DateEditModal date={pendingTargetDate} setDate={setPendingTargetDate} onConfirm={initiateDateUpdate} onCancel={() => setShowDateEditModal(false)} />}
+      {showDateStrategyModal && <DateStrategyModal type={dateStrategyType} onAdapt={(t) => handleAdaptation(t, pendingTargetDate)} onManual={() => handleDateUpdateWithoutAI(pendingTargetDate)} onClose={() => setShowDateStrategyModal(false)} />}
       {isAdapting && <AdaptingOverlay />}
       {toast && <div className="fixed bottom-24 md:bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 border border-emerald-500/50 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 animate-fade-in z-[100]"><CheckCircle2 className="h-5 w-5 text-emerald-500" /><span className="font-medium text-sm">{toast.message}</span></div>}
     </div>

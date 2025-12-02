@@ -1,5 +1,3 @@
-
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { CareerOption, RoadmapPhase, NewsItem, RoadmapItem, SkillQuestion, DailyQuizItem, InterviewQuestion, PracticeQuestion, SimulationScenario, ChatMessage } from '../types';
 
@@ -391,7 +389,11 @@ export const generatePracticeQuestions = async (careerTitle: string, topic?: str
         ${NOVA_PERSONA}
         Generate a comprehensive set of 15 practice MCQ questions for ${careerTitle} ${context}.
         Include detailed explanation for the correct answer.
-        Output JSON array of PracticeQuestion objects.
+        
+        Output a valid JSON array of objects with schema: { id, question, options (array of 4 strings), correctIndex, explanation, topic }
+        
+        CRITICAL: 'correctIndex' MUST be a 0-based NUMBER (0, 1, 2, or 3). Do not use letters, strings, or 1-based indices.
+        Example: "correctIndex": 0
     `;
     
     try {
@@ -473,7 +475,7 @@ export const generateSimulationScenario = async (careerTitle: string): Promise<S
         ${NOVA_PERSONA}
         Create a role-playing job simulation scenario for a ${careerTitle}.
         Describe a realistic workplace situation (the 'scenario') and ask a decision-making question.
-        Provide 4 options and the correct index.
+        Provide 4 options and the correct index (NUMBER 0-3).
         Output JSON.
     `;
     

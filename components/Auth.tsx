@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { UserProfile } from '../types';
 import { getUsers, saveUser, setCurrentUser } from '../services/store';
@@ -78,7 +77,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             </div>
             
             <h1 className="text-3xl font-black text-white tracking-tight mb-1">
-                PathFindr<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-fuchsia-400">AI</span>
+                PathFindr<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-fuchsia-400">.AI</span>
             </h1>
             <p className="text-slate-400 text-sm">
               {view === 'login' && 'Welcome back, Architect.'}

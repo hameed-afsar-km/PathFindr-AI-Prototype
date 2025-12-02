@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { RoadmapPhase, UserProfile, RoadmapItem } from '../types';
 import { Subscription } from './Subscription';
-import { CheckCircle2, Circle, ExternalLink, RefreshCw, Briefcase, Award, Code, Zap, Clock, ChevronDown, ChevronUp, Star, AlertTriangle, CheckCircle, RotateCcw, Lock, Filter, Search, Info, Check, Pencil } from 'lucide-react';
+import { CheckCircle2, Circle, ExternalLink, RefreshCw, Briefcase, Award, Code, Zap, Clock, ChevronDown, ChevronUp, Star, AlertTriangle, CheckCircle, RotateCcw, Lock, Filter, Search, Info, Check, Pencil, Compass } from 'lucide-react';
 
 interface PacingStatus {
     status: 'ahead' | 'behind' | 'on-track' | 'critical';
@@ -68,7 +68,6 @@ export const Roadmap: React.FC<RoadmapProps> = ({
   }, [roadmap]);
 
   // Check if item is locked based on strict linear progression
-  // An item is locked if the IMMEDIATELY PRECEDING item is not completed.
   const isLocked = (item: RoadmapItem) => {
       if (!flatRoadmapItems.length) return false;
       const index = flatRoadmapItems.findIndex(i => i.id === item.id);
@@ -133,6 +132,12 @@ export const Roadmap: React.FC<RoadmapProps> = ({
   const getActiveCareerDate = () => {
       const active = getActiveCareer();
       return active ? active.targetCompletionDate : (user.activeCareers[0]?.targetCompletionDate || 'N/A');
+  }
+
+  const getStartDateDisplay = () => {
+      const active = getActiveCareer();
+      if (!active) return 'N/A';
+      return new Date(active.addedAt).toLocaleDateString();
   }
 
   const handleResetRequest = () => {
@@ -210,16 +215,16 @@ export const Roadmap: React.FC<RoadmapProps> = ({
   };
 
   if (isLoading || !roadmap) return (
-      <div className="p-6 space-y-6 min-h-[60vh]">
-           <div className="h-32 bg-slate-900 rounded-3xl animate-pulse"></div>
-           <div className="space-y-4">
-               {[1,2,3].map(i => (
-                   <div key={i} className="h-20 bg-slate-900 rounded-2xl animate-pulse"></div>
-               ))}
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6 animate-fade-in w-full overflow-hidden">
+           <div className="relative">
+               <div className="absolute inset-0 bg-indigo-500/20 blur-2xl rounded-full animate-pulse"></div>
+               <div className="relative w-24 h-24 bg-slate-900/90 rounded-2xl flex items-center justify-center shadow-2xl shadow-indigo-500/30 border border-slate-800 ring-1 ring-white/10">
+                   <Compass className="h-12 w-12 text-indigo-400 animate-[spin_4s_linear_infinite]" />
+               </div>
            </div>
-           <div className="flex items-center justify-center text-slate-400 gap-2 mt-8">
-                <RefreshCw className="h-5 w-5 animate-spin" />
-                <span>Loading your career path...</span>
+           <div>
+               <h3 className="text-xl font-bold text-white mb-2">Charting Your Path...</h3>
+               <p className="text-slate-400 animate-pulse text-sm">Nova is organizing your journey.</p>
            </div>
       </div>
   );
@@ -237,7 +242,7 @@ export const Roadmap: React.FC<RoadmapProps> = ({
   };
 
   return (
-    <div className="relative min-h-[80vh] pb-10">
+    <div className="relative min-h-[80vh] pb-10 w-full overflow-x-hidden">
       {!isPaid && <Subscription onSubscribe={onSubscribe} />}
       
       {/* Task Confirmation Modal */}
@@ -331,7 +336,7 @@ export const Roadmap: React.FC<RoadmapProps> = ({
       <div className={`p-4 md:p-6 space-y-6 ${!isPaid ? 'blur-sm select-none h-[80vh] overflow-hidden' : ''}`}>
         
         {/* Header & Controls */}
-        <div className="flex flex-col gap-6 bg-slate-900/50 p-6 rounded-3xl border border-slate-800">
+        <div className="flex flex-col gap-6 bg-slate-900/50 p-6 rounded-3xl border border-slate-800 w-full overflow-hidden">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                 <div>
                     <div className="flex items-center gap-2 mb-2 relative z-20">
@@ -415,6 +420,13 @@ export const Roadmap: React.FC<RoadmapProps> = ({
                      </div>
                 </div>
 
+                <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800 flex items-center justify-between px-4 md:px-6 col-span-2 md:col-span-1">
+                    <div className="text-left">
+                         <div className="text-sm font-bold text-slate-300">Start Date</div>
+                         <div className="text-xs text-slate-500">{getStartDateDisplay()}</div>
+                    </div>
+                </div>
+
                 <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800 flex items-center justify-between px-4 md:px-6 group relative cursor-pointer hover:border-indigo-500/50 transition-colors col-span-2 md:col-span-1" onClick={onEditTargetDate}>
                     <div className="text-left">
                          <div className="text-sm font-bold text-slate-300">Target Date</div>
@@ -442,7 +454,7 @@ export const Roadmap: React.FC<RoadmapProps> = ({
 
         {/* Current Focus Card */}
         {nextTask && activeCategory === 'all' && !searchQuery && (
-            <div className="bg-gradient-to-r from-indigo-900/40 to-slate-900 p-6 rounded-3xl border border-indigo-500/30 shadow-lg shadow-indigo-900/10 animate-fade-in">
+            <div className="bg-gradient-to-r from-indigo-900/40 to-slate-900 p-6 rounded-3xl border border-indigo-500/30 shadow-lg shadow-indigo-900/10 animate-fade-in w-full overflow-hidden">
                 <div className="flex items-start justify-between mb-4">
                     <div>
                         <div className="flex items-center gap-2 text-indigo-400 mb-1">
