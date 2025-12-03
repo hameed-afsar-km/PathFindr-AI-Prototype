@@ -1,5 +1,4 @@
-
-import { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { UserProfile, CareerOption, RoadmapPhase, NewsItem, RoadmapItem, DailyQuizItem, InterviewQuestion, PracticeQuestion, SimulationScenario, ChatMessage } from '../types';
 import { Roadmap } from './Roadmap';
 import { fetchTechNews, generateRoadmap, calculateRemainingDays, generateDailyQuiz, generatePracticeTopics, generatePracticeQuestions, generateCompanyInterviewQuestions, generateSimulationScenario, generateChatResponse } from '../services/gemini';
@@ -18,116 +17,36 @@ interface DashboardProps {
   onDeleteAccount: () => void;
 }
 
-// Improved Practice Question Card with integrated state and robust type checking
 const PracticeQuestionCard: React.FC<{ question: PracticeQuestion, index: number }> = ({ question, index }) => {
     const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
-
-    const handleSelect = (idx: number) => {
-        if (selectedIdx !== null) return; // Prevent changing answer
-        setSelectedIdx(idx);
-    };
-
-    // FIX: Redundant Number() call removed as correctIndex is already typed as a number.
+    const handleSelect = (idx: number) => { if (selectedIdx !== null) return; setSelectedIdx(idx); };
     const correctIdx = question.correctIndex;
     const isAnswered = selectedIdx !== null;
     const isUserCorrect = selectedIdx === correctIdx;
-
     return (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 transition-all hover:border-slate-700 w-full">
-            <h4 className="text-lg font-bold text-white mb-6 flex items-start gap-3">
-                <span className="bg-indigo-500/10 text-indigo-400 text-xs px-2 py-1 rounded pt-0.5 shrink-0 border border-indigo-500/20">Q{index + 1}</span>
-                {question.question}
-            </h4>
-            
+            <h4 className="text-lg font-bold text-white mb-6 flex items-start gap-3"><span className="bg-indigo-500/10 text-indigo-400 text-xs px-2 py-1 rounded pt-0.5 shrink-0 border border-indigo-500/20">Q{index + 1}</span>{question.question}</h4>
             <div className="grid gap-3">
                 {question.options.map((opt, idx) => {
-                    // Logic for button styling based on state
-                    // Using !important classes to ensure visibility overrides default hover
                     let btnClass = "w-full text-left p-4 rounded-xl border transition-all flex justify-between items-center ";
                     let icon = null;
-
                     if (isAnswered) {
-                        if (idx === correctIdx) {
-                            // CORRECT ANSWER: Always Green (whether selected or not)
-                            btnClass += "!bg-emerald-500/20 !border-emerald-500 text-white ring-1 ring-emerald-500/50";
-                            icon = <CheckCircle2 className="h-5 w-5 text-emerald-400" />;
-                        } else if (idx === selectedIdx) {
-                            // WRONG SELECTION: Red
-                            btnClass += "!bg-red-500/20 !border-red-500 text-white ring-1 ring-red-500/50";
-                            icon = <AlertCircle className="h-5 w-5 text-red-400" />;
-                        } else {
-                            // UNSELECTED & NOT CORRECT: Dimmed
-                            btnClass += "bg-slate-900 border-slate-800 text-slate-500 opacity-50";
-                        }
-                    } else {
-                        // DEFAULT STATE
-                        btnClass += "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-indigo-500 hover:text-white";
-                    }
-
-                    return (
-                        <button 
-                            key={idx}
-                            onClick={() => handleSelect(idx)}
-                            disabled={isAnswered}
-                            className={btnClass}
-                        >
-                            <span className="flex items-center gap-3">
-                                <span className={`w-6 h-6 rounded-full border flex items-center justify-center text-xs font-bold ${
-                                    isAnswered && idx === correctIdx ? '!bg-emerald-500 !border-emerald-500 text-slate-950' : 
-                                    isAnswered && idx === selectedIdx ? '!bg-red-500 !border-red-500 text-white' :
-                                    'border-slate-600 text-slate-400'
-                                }`}>
-                                    {['A','B','C','D'][idx]}
-                                </span>
-                                {opt}
-                            </span>
-                            {icon}
-                        </button>
-                    );
+                        if (idx === correctIdx) { btnClass += "!bg-emerald-500/20 !border-emerald-500 text-white ring-1 ring-emerald-500/50"; icon = <CheckCircle2 className="h-5 w-5 text-emerald-400" />; } 
+                        else if (idx === selectedIdx) { btnClass += "!bg-red-500/20 !border-red-500 text-white ring-1 ring-red-500/50"; icon = <AlertCircle className="h-5 w-5 text-red-400" />; } 
+                        else { btnClass += "bg-slate-900 border-slate-800 text-slate-500 opacity-50"; }
+                    } else { btnClass += "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-indigo-500 hover:text-white"; }
+                    return <button key={idx} onClick={() => handleSelect(idx)} disabled={isAnswered} className={btnClass}><span className="flex items-center gap-3"><span className={`w-6 h-6 rounded-full border flex items-center justify-center text-xs font-bold ${isAnswered && idx === correctIdx ? '!bg-emerald-500 !border-emerald-500 text-slate-950' : isAnswered && idx === selectedIdx ? '!bg-red-500 !border-red-500 text-white' : 'border-slate-600 text-slate-400'}`}>{['A','B','C','D'][idx]}</span>{opt}</span>{icon}</button>;
                 })}
             </div>
-
-            {isAnswered && (
-                <div className={`mt-6 p-4 rounded-xl border animate-fade-in ${isUserCorrect ? 'bg-emerald-900/10 border-emerald-500/30' : 'bg-red-900/10 border-red-500/30'}`}>
-                    <div className="flex items-center gap-2 mb-2">
-                        {isUserCorrect ? (
-                            <span className="text-emerald-400 font-bold text-sm flex items-center gap-2">
-                                <CheckCircle2 className="h-4 w-4" /> Correct!
-                            </span>
-                        ) : (
-                            <span className="text-red-400 font-bold text-sm flex items-center gap-2">
-                                <AlertCircle className="h-4 w-4" /> Incorrect
-                            </span>
-                        )}
-                    </div>
-                    
-                    {!isUserCorrect && (
-                         <div className="mb-2 text-sm">
-                             <span className="font-semibold text-slate-400 text-xs uppercase tracking-wider block">Correct Answer</span>
-                             <p className="text-emerald-300 font-medium">{question.options[correctIdx]}</p>
-                         </div>
-                    )}
-
-                    <p className="text-slate-300 text-sm leading-relaxed pt-2 border-t border-slate-700/50 mt-2">
-                        <span className="font-semibold text-slate-400 text-xs uppercase tracking-wider block mb-1">Explanation</span>
-                        {question.explanation}
-                    </p>
-                </div>
-            )}
+            {isAnswered && (<div className={`mt-6 p-4 rounded-xl border animate-fade-in ${isUserCorrect ? 'bg-emerald-900/10 border-emerald-500/30' : 'bg-red-900/10 border-red-500/30'}`}><div className="flex items-center gap-2 mb-2">{isUserCorrect ? <span className="text-emerald-400 font-bold text-sm flex items-center gap-2"><CheckCircle2 className="h-4 w-4" /> Correct!</span> : <span className="text-red-400 font-bold text-sm flex items-center gap-2"><AlertCircle className="h-4 w-4" /> Incorrect</span>}</div>{!isUserCorrect && <div className="mb-2 text-sm"><span className="font-semibold text-slate-400 text-xs uppercase tracking-wider block">Correct Answer</span><p className="text-emerald-300 font-medium">{question.options[correctIdx]}</p></div>}<p className="text-slate-300 text-sm leading-relaxed pt-2 border-t border-slate-700/50 mt-2"><span className="font-semibold text-slate-400 text-xs uppercase tracking-wider block mb-1">Explanation</span>{question.explanation}</p></div>)}
         </div>
     );
 };
 
-// FIX: Removed unused QuizOption component
 const CountdownTimer = () => {
     const [timeLeft, setTimeLeft] = useState('');
     useEffect(() => {
-        const timer = setInterval(() => {
-            const now = new Date(); const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1); tomorrow.setHours(0, 0, 0, 0);
-            const diff = tomorrow.getTime() - now.getTime();
-            const h = Math.floor((diff / (1000 * 60 * 60)) % 24); const m = Math.floor((diff / (1000 * 60)) % 60); const s = Math.floor((diff / 1000) % 60);
-            setTimeLeft(`${h.toString().padStart(2, '0')} : ${m.toString().padStart(2, '0')} : ${s.toString().padStart(2, '0')}`);
-        }, 1000);
+        const timer = setInterval(() => { const now = new Date(); const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1); tomorrow.setHours(0, 0, 0, 0); const diff = tomorrow.getTime() - now.getTime(); const h = Math.floor((diff / (1000 * 60 * 60)) % 24); const m = Math.floor((diff / (1000 * 60)) % 60); const s = Math.floor((diff / 1000) % 60); setTimeLeft(`${h.toString().padStart(2, '0')} : ${m.toString().padStart(2, '0')} : ${s.toString().padStart(2, '0')}`); }, 1000);
         return () => clearInterval(timer);
     }, []);
     return <span className="text-white font-mono font-bold tracking-widest">{timeLeft}</span>;
@@ -147,155 +66,16 @@ const ChatWindow: React.FC<{ isOpen: boolean; onClose: () => void; careerTitle: 
     );
 };
 
-const QuestionSkeletonCard = () => (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 animate-pulse"><div className="h-4 bg-slate-800 rounded w-3/4 mb-6"></div><div className="space-y-3"><div className="h-10 bg-slate-800 rounded-xl"></div><div className="h-10 bg-slate-800 rounded-xl"></div><div className="h-10 bg-slate-800 rounded-xl"></div><div className="h-10 bg-slate-800 rounded-xl"></div></div></div>
-);
-
-const InterviewSkeletonCard = () => (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 animate-pulse"><div className="flex justify-between items-start mb-4"><div className="h-4 bg-slate-800 rounded w-24"></div></div><div className="h-5 bg-slate-800 rounded w-full mb-6"></div><div className="h-10 bg-slate-800 rounded-xl"></div></div>
-);
-
-// --- Modals & Overlays ---
-
-const CelebrationModal = ({ onClose }: { onClose: () => void }) => (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
-        <div className="text-center pointer-events-auto bg-slate-900 border border-yellow-500/30 p-8 rounded-3xl shadow-2xl relative overflow-hidden">
-             <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-purple-500/10"></div>
-             <div className="relative z-10">
-                <div className="text-6xl mb-6 animate-bounce">🏆</div>
-                <h2 className="text-3xl font-bold text-white mb-2">Congratulations!</h2>
-                <p className="text-slate-300 mb-8">You've completed the entire roadmap!</p>
-                <button onClick={onClose} className="px-8 py-3 bg-white text-slate-900 font-bold rounded-xl hover:bg-slate-200 transition-colors">Continue</button>
-             </div>
-        </div>
-    </div>
-);
-
-const PhaseCompletionModal = ({ onClose, onUpdateDate }: { onClose: () => void, onUpdateDate: () => void }) => (
-     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
-        <div className="bg-slate-900 border border-emerald-500/30 p-8 rounded-3xl max-w-md w-full shadow-2xl relative">
-            <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2"><Zap className="h-6 w-6 text-yellow-400" /> Phase Complete!</h2>
-            <p className="text-slate-400 mb-6">You finished this phase ahead of schedule. Would you like to adjust your target date to finish the whole career path sooner?</p>
-            <div className="space-y-3">
-                <button onClick={onUpdateDate} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-colors">Yes, Update Target Date</button>
-                <button onClick={onClose} className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-colors">No, Keep Original Schedule</button>
-            </div>
-        </div>
-    </div>
-);
-
-const FeedbackModal = ({ onClose, text, setText }: { onClose: () => void, text: string, setText: (s: string) => void }) => (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl max-w-md w-full shadow-2xl">
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-white">Send Feedback</h2>
-                <button onClick={onClose}><X className="h-5 w-5 text-slate-500" /></button>
-            </div>
-            <textarea 
-                className="w-full h-32 bg-slate-950 border border-slate-800 rounded-xl p-4 text-white focus:border-indigo-500 outline-none resize-none mb-4"
-                placeholder="Tell us what you think..."
-                value={text}
-                onChange={e => setText(e.target.value)}
-            />
-            <button onClick={() => { alert('Feedback sent!'); onClose(); setText(''); }} className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl">Send Message</button>
-        </div>
-    </div>
-);
-
-const ConfirmationModal = ({ action, onConfirm, onCancel }: { action: {type: string, inputValue: string}, onConfirm: () => void, onCancel: () => void }) => (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
-        <div className="bg-slate-900 border border-red-500/30 p-6 rounded-3xl max-w-md w-full shadow-2xl">
-             <div className="flex items-center gap-3 mb-4 text-red-400">
-                 <AlertTriangle className="h-6 w-6" />
-                 <h2 className="text-xl font-bold">Are you sure?</h2>
-             </div>
-             <p className="text-slate-300 mb-6">
-                 {action.type === 'reset_all' ? "This will wipe all progress across all careers." : "This will permanently delete your account and all data."}
-             </p>
-             <div className="flex gap-3">
-                 <button onClick={onCancel} className="flex-1 py-3 bg-slate-800 text-white font-bold rounded-xl">Cancel</button>
-                 <button onClick={onConfirm} className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl">Confirm</button>
-             </div>
-        </div>
-    </div>
-);
-
-const DeleteCareerConfirmationModal = ({ onConfirm, onCancel }: { onConfirm: () => void, onCancel: () => void }) => (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
-        <div className="bg-slate-900 border border-red-500/30 p-6 rounded-3xl max-w-md w-full shadow-2xl">
-             <div className="flex items-center gap-3 mb-4 text-red-400">
-                 <Trash2 className="h-6 w-6" />
-                 <h2 className="text-xl font-bold">Delete Career Path?</h2>
-             </div>
-             <p className="text-slate-300 mb-6">This will remove this career and its roadmap history.</p>
-             <div className="flex gap-3">
-                 <button onClick={onCancel} className="flex-1 py-3 bg-slate-800 text-white font-bold rounded-xl">Cancel</button>
-                 <button onClick={onConfirm} className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl">Delete</button>
-             </div>
-        </div>
-    </div>
-);
-
-const DateEditModal = ({ date, setDate, onConfirm, onCancel }: { date: string, setDate: (d: string) => void, onConfirm: () => void, onCancel: () => void }) => (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl max-w-sm w-full shadow-2xl">
-            <h2 className="text-xl font-bold text-white mb-4">Change Target Date</h2>
-            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-white mb-6 color-scheme-dark" />
-            <div className="flex gap-3">
-                 <button onClick={onCancel} className="flex-1 py-3 bg-slate-800 text-white font-bold rounded-xl">Cancel</button>
-                 <button onClick={onConfirm} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl">Update</button>
-            </div>
-        </div>
-    </div>
-);
-
-const DateStrategyModal = ({ type, onAdapt, onManual, onClose }: { type: 'extension' | 'shortening' | null, onAdapt: (t: any) => void, onManual: () => void, onClose: () => void }) => (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
-        <div className="bg-slate-900 border border-indigo-500/30 p-8 rounded-3xl max-w-lg w-full shadow-2xl">
-            <h2 className="text-2xl font-bold text-white mb-2">Timeline Changed</h2>
-            <p className="text-slate-400 mb-6">How should Nova handle the roadmap changes?</p>
-            
-            <div className="space-y-3">
-                {type === 'extension' ? (
-                    <>
-                        <button onClick={() => onAdapt('increase_difficulty')} className="w-full p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-left group">
-                            <div className="font-bold text-white mb-1 group-hover:text-indigo-400">Fill with Advanced Content</div>
-                            <div className="text-xs text-slate-500">Keep daily pace, add more depth.</div>
-                        </button>
-                        <button onClick={() => onAdapt('relax_pace')} className="w-full p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-left group">
-                             <div className="font-bold text-white mb-1 group-hover:text-indigo-400">Relax the Pace</div>
-                            <div className="text-xs text-slate-500">Spread existing tasks over more days.</div>
-                        </button>
-                    </>
-                ) : (
-                    <>
-                        <button onClick={() => onAdapt('challenge_me')} className="w-full p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-left group">
-                             <div className="font-bold text-white mb-1 group-hover:text-indigo-400">Increase Intensity (Challenge Mode)</div>
-                            <div className="text-xs text-slate-500">Compress tasks into shorter time.</div>
-                        </button>
-                         <button onClick={() => onAdapt('reduce_difficulty_and_scope')} className="w-full p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-left group">
-                             <div className="font-bold text-white mb-1 group-hover:text-indigo-400">Reduce Scope</div>
-                            <div className="text-xs text-slate-500">Remove optional/advanced topics.</div>
-                        </button>
-                    </>
-                )}
-                <button onClick={onManual} className="w-full p-4 bg-slate-950 hover:bg-slate-900 border border-slate-800 rounded-xl text-left group">
-                     <div className="font-bold text-slate-400 mb-1 group-hover:text-white">Just Update Date</div>
-                    <div className="text-xs text-slate-600">Don't change the roadmap items.</div>
-                </button>
-            </div>
-             <button onClick={onClose} className="mt-6 w-full text-slate-500 hover:text-white text-sm">Cancel</button>
-        </div>
-    </div>
-);
-
-const AdaptingOverlay = () => (
-    <div className="fixed inset-0 z-[120] flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-md animate-fade-in">
-        <RefreshCw className="h-16 w-16 text-indigo-500 animate-spin mb-6" />
-        <h2 className="text-3xl font-bold text-white mb-2">Nova is Adapting...</h2>
-        <p className="text-slate-400">Re-architecting your roadmap based on new constraints.</p>
-    </div>
-);
+const QuestionSkeletonCard = () => (<div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 animate-pulse"><div className="h-4 bg-slate-800 rounded w-3/4 mb-6"></div><div className="space-y-3"><div className="h-10 bg-slate-800 rounded-xl"></div><div className="h-10 bg-slate-800 rounded-xl"></div><div className="h-10 bg-slate-800 rounded-xl"></div><div className="h-10 bg-slate-800 rounded-xl"></div></div></div>);
+const InterviewSkeletonCard = () => (<div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 animate-pulse"><div className="flex justify-between items-start mb-4"><div className="h-4 bg-slate-800 rounded w-24"></div></div><div className="h-5 bg-slate-800 rounded w-full mb-6"></div><div className="h-10 bg-slate-800 rounded-xl"></div></div>);
+const CelebrationModal = ({ onClose }: { onClose: () => void }) => (<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}><div className="text-center pointer-events-auto bg-slate-900 border border-yellow-500/30 p-8 rounded-3xl shadow-2xl relative overflow-hidden"><div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-purple-500/10"></div><div className="relative z-10"><div className="text-6xl mb-6 animate-bounce">🏆</div><h2 className="text-3xl font-bold text-white mb-2">Congratulations!</h2><p className="text-slate-300 mb-8">You've completed the entire roadmap!</p><button onClick={onClose} className="px-8 py-3 bg-white text-slate-900 font-bold rounded-xl hover:bg-slate-200 transition-colors">Continue</button></div></div></div>);
+const PhaseCompletionModal = ({ onClose, onUpdateDate }: { onClose: () => void, onUpdateDate: () => void }) => (<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in"><div className="bg-slate-900 border border-emerald-500/30 p-8 rounded-3xl max-w-md w-full shadow-2xl relative"><h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2"><Zap className="h-6 w-6 text-yellow-400" /> Phase Complete!</h2><p className="text-slate-400 mb-6">You finished this phase ahead of schedule. Would you like to adjust your target date to finish the whole career path sooner?</p><div className="space-y-3"><button onClick={onUpdateDate} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-colors">Yes, Update Target Date</button><button onClick={onClose} className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-colors">No, Keep Original Schedule</button></div></div></div>);
+const FeedbackModal = ({ onClose, text, setText }: { onClose: () => void, text: string, setText: (s: string) => void }) => (<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in"><div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl max-w-md w-full shadow-2xl"><div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-white">Send Feedback</h2><button onClick={onClose}><X className="h-5 w-5 text-slate-500" /></button></div><textarea className="w-full h-32 bg-slate-950 border border-slate-800 rounded-xl p-4 text-white focus:border-indigo-500 outline-none resize-none mb-4" placeholder="Tell us what you think..." value={text} onChange={e => setText(e.target.value)} /><button onClick={() => { alert('Feedback sent!'); onClose(); setText(''); }} className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl">Send Message</button></div></div>);
+const ConfirmationModal = ({ action, onConfirm, onCancel }: { action: {type: string, inputValue: string}, onConfirm: () => void, onCancel: () => void }) => (<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in"><div className="bg-slate-900 border border-red-500/30 p-6 rounded-3xl max-w-md w-full shadow-2xl"><div className="flex items-center gap-3 mb-4 text-red-400"><AlertTriangle className="h-6 w-6" /><h2 className="text-xl font-bold">Are you sure?</h2></div><p className="text-slate-300 mb-6">{action.type === 'reset_all' ? "This will wipe all progress across all careers." : "This will permanently delete your account and all data."}</p><div className="flex gap-3"><button onClick={onCancel} className="flex-1 py-3 bg-slate-800 text-white font-bold rounded-xl">Cancel</button><button onClick={onConfirm} className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl">Confirm</button></div></div></div>);
+const DeleteCareerConfirmationModal = ({ onConfirm, onCancel }: { onConfirm: () => void, onCancel: () => void }) => (<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in"><div className="bg-slate-900 border border-red-500/30 p-6 rounded-3xl max-w-md w-full shadow-2xl"><div className="flex items-center gap-3 mb-4 text-red-400"><Trash2 className="h-6 w-6" /><h2 className="text-xl font-bold">Delete Career Path?</h2></div><p className="text-slate-300 mb-6">This will remove this career and its roadmap history.</p><div className="flex gap-3"><button onClick={onCancel} className="flex-1 py-3 bg-slate-800 text-white font-bold rounded-xl">Cancel</button><button onClick={onConfirm} className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl">Delete</button></div></div></div>);
+const DateEditModal = ({ date, setDate, onConfirm, onCancel }: { date: string, setDate: (d: string) => void, onConfirm: () => void, onCancel: () => void }) => (<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in"><div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl max-w-sm w-full shadow-2xl"><h2 className="text-xl font-bold text-white mb-4">Change Target Date</h2><input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-white mb-6 color-scheme-dark" /><div className="flex gap-3"><button onClick={onCancel} className="flex-1 py-3 bg-slate-800 text-white font-bold rounded-xl">Cancel</button><button onClick={onConfirm} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl">Update</button></div></div></div>);
+const DateStrategyModal = ({ type, onAdapt, onManual, onClose }: { type: 'extension' | 'shortening' | null, onAdapt: (t: any) => void, onManual: () => void, onClose: () => void }) => (<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in"><div className="bg-slate-900 border border-indigo-500/30 p-8 rounded-3xl max-w-lg w-full shadow-2xl"><h2 className="text-2xl font-bold text-white mb-2">Timeline Changed</h2><p className="text-slate-400 mb-6">How should Nova handle the roadmap changes?</p><div className="space-y-3">{type === 'extension' ? (<><button onClick={() => onAdapt('increase_difficulty')} className="w-full p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-left group"><div className="font-bold text-white mb-1 group-hover:text-indigo-400">Fill with Advanced Content</div><div className="text-xs text-slate-500">Keep daily pace, add more depth.</div></button><button onClick={() => onAdapt('relax_pace')} className="w-full p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-left group"><div className="font-bold text-white mb-1 group-hover:text-indigo-400">Relax the Pace</div><div className="text-xs text-slate-500">Spread existing tasks over more days.</div></button></>) : (<><button onClick={() => onAdapt('challenge_me')} className="w-full p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-left group"><div className="font-bold text-white mb-1 group-hover:text-indigo-400">Increase Intensity (Challenge Mode)</div><div className="text-xs text-slate-500">Compress tasks into shorter time.</div></button><button onClick={() => onAdapt('reduce_difficulty_and_scope')} className="w-full p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-left group"><div className="font-bold text-white mb-1 group-hover:text-indigo-400">Reduce Scope</div><div className="text-xs text-slate-500">Remove optional/advanced topics.</div></button></>)}<button onClick={onManual} className="w-full p-4 bg-slate-950 hover:bg-slate-900 border border-slate-800 rounded-xl text-left group"><div className="font-bold text-slate-400 mb-1 group-hover:text-white">Just Update Date</div><div className="text-xs text-slate-600">Don't change the roadmap items.</div></button></div><button onClick={onClose} className="mt-6 w-full text-slate-500 hover:text-white text-sm">Cancel</button></div></div>);
+const AdaptingOverlay = () => (<div className="fixed inset-0 z-[120] flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-md animate-fade-in"><RefreshCw className="h-16 w-16 text-indigo-500 animate-spin mb-6" /><h2 className="text-3xl font-bold text-white mb-2">Nova is Adapting...</h2><p className="text-slate-400">Re-architecting your roadmap based on new constraints.</p></div>);
 
 export const Dashboard: React.FC<DashboardProps> = ({ 
   user, career, roadmap, onLogout, setRoadmap, setUser, setCareer, onAddCareer, onDeleteAccount 
@@ -319,73 +99,126 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [practiceSearch, setPracticeSearch] = useState('');
   const [practiceTopics, setPracticeTopics] = useState<string[]>([]);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
-  
   const [practiceQuestionBank, setPracticeQuestionBank] = useState<PracticeQuestion[]>([]);
   const [interviewQuestionBank, setInterviewQuestionBank] = useState<InterviewQuestion[]>([]);
   const [practiceQuestions, setPracticeQuestions] = useState<PracticeQuestion[]>([]);
   const [interviewQuestions, setInterviewQuestions] = useState<InterviewQuestion[]>([]);
-  
   const [visibleAnswers, setVisibleAnswers] = useState<Set<string>>(new Set());
   const [companyFilter, setCompanyFilter] = useState<string>('All');
-  
   const [customGenTopic, setCustomGenTopic] = useState('');
   const [customGenDifficulty, setCustomGenDifficulty] = useState('Medium');
-
   const [simulationScenario, setSimulationScenario] = useState<SimulationScenario | null>(null);
   const [simAnswer, setSimAnswer] = useState<number | null>(null);
   const [isPracticeLoading, setIsPracticeLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-
   const [isAdapting, setIsAdapting] = useState(false);
   const [showPhaseCompletionModal, setShowPhaseCompletionModal] = useState(false);
-  
   const [showDateEditModal, setShowDateEditModal] = useState(false);
   const [pendingTargetDate, setPendingTargetDate] = useState('');
   const [showDateStrategyModal, setShowDateStrategyModal] = useState(false);
   const [dateStrategyType, setDateStrategyType] = useState<'extension' | 'shortening' | null>(null);
-
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
   const [confirmAction, setConfirmAction] = useState<{type: 'reset_all' | 'delete_account', inputValue: string} | null>(null);
   const [careerToDelete, setCareerToDelete] = useState<string | null>(null);
   const [careerStats, setCareerStats] = useState<Record<string, { progress: number, daysLeft: number }>>({});
-  
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [isChatTyping, setIsChatTyping] = useState(false);
   const [homeSearchQuery, setHomeSearchQuery] = useState('');
 
   const currentCareerDetails = user.activeCareers.find(c => c.careerId === career.id);
+  const prevCareerIdRef = useRef(career.id);
 
   const showToastMsg = (msg: string) => { setToast({ message: msg, type: 'success' }); setTimeout(() => setToast(null), 3000); };
-
   useEffect(() => { const themes = ['theme-emerald', 'theme-rose', 'theme-amber', 'theme-cyan']; document.body.classList.remove(...themes); if (user.theme && user.theme !== 'indigo') { document.body.classList.add(`theme-${user.theme}`); } }, [user.theme]);
   const setAccentColor = (color: 'indigo' | 'emerald' | 'rose' | 'amber' | 'cyan') => { const updatedUser = { ...user, theme: color }; setUser(updatedUser); saveUser(updatedUser); };
-  
   useEffect(() => { const initialGreeting = { id: Date.now().toString(), role: 'bot' as const, text: `Hello ${user.username}! I see you're currently focusing on ${career.title}. How can I assist you with your roadmap or career questions today?`, timestamp: Date.now() }; setChatHistory(prev => { if (prev.length === 0) return [initialGreeting]; return [...prev, { id: Date.now().toString(), role: 'bot', text: `Switched focus to ${career.title}.`, timestamp: Date.now() }]; }); }, [career.id, user.username]);
-
   const handleSendMessage = async (text: string) => { const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', text, timestamp: Date.now() }; setChatHistory(prev => [...prev, userMsg]); setIsChatTyping(true); try { const responseText = await generateChatResponse(text, career.title, chatHistory); const botMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'bot', text: responseText, timestamp: Date.now() }; setChatHistory(prev => [...prev, botMsg]); } catch (e) { const errMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'bot', text: "I'm having trouble connecting right now. Please try again.", timestamp: Date.now() }; setChatHistory(prev => [...prev, errMsg]); } finally { setIsChatTyping(false); } };
-
   useEffect(() => { if (roadmap) { let total = 0; let completed = 0; roadmap.forEach(phase => { phase.items.forEach(item => { total++; if (item.status === 'completed') completed++; }); }); const calculatedProgress = total === 0 ? 0 : Math.round((completed / total) * 100); if (calculatedProgress === 100 && progress !== 100 && progress !== 0) { setShowCelebration(true); } setProgress(calculatedProgress); } else { setProgress(0); } }, [roadmap, progress]);
-
   useEffect(() => { if (activeTab === 'career') { const stats: Record<string, { progress: number, daysLeft: number }> = {}; user.activeCareers.forEach(c => { const r = getRoadmap(user.id, c.careerId) || []; let total = 0; let completed = 0; r.forEach(p => { p.items.forEach(i => { total++; if (i.status === 'completed') completed++; }); }); const prog = total === 0 ? 0 : Math.round((completed / total) * 100); const parts = c.targetCompletionDate.split('-'); let days = 0; if (parts.length === 3) { const targetDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0); const today = new Date(); today.setHours(12, 0, 0, 0); const diff = Math.round((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)); days = diff >= 0 ? diff + 1 : 0; } stats[c.careerId] = { progress: prog, daysLeft: days }; }); setCareerStats(stats); } }, [activeTab, user]);
-
   const loadNews = async (query?: string) => { if (!career?.title) return; const searchTopic = query || career.title; if (!query) { const cachedNews = getNewsCache(user.id, career.id); if (cachedNews && cachedNews.length > 0) { setNews(cachedNews); return; } } setIsNewsLoading(true); setNews([]); try { const newsItems = await fetchTechNews(searchTopic); setNews(newsItems); if (!query) saveNewsCache(user.id, career.id, newsItems); } catch (e) { console.error("Failed to load news", e); } finally { setIsNewsLoading(false); } };
   useEffect(() => { if (activeTab === 'home') loadNews(); }, [career.id, career.title, activeTab, user.id]);
   const handleHomeSearch = () => { loadNews(homeSearchQuery); };
-
   const handlePracticeSearch = async () => { setIsPracticeLoading(true); if (practiceTab === 'quiz') { const qs = await generatePracticeQuestions(career.title, selectedTopic || undefined, practiceSearch); setPracticeQuestionBank(qs); setPracticeQuestions(qs); } else if (practiceTab === 'interview') { const params = companyFilter === 'AI Challenge' ? { topic: customGenTopic || career.title, difficulty: customGenDifficulty } : undefined; const qs = await generateCompanyInterviewQuestions(career.title, companyFilter, params); setInterviewQuestions(qs); } else { const sim = await generateSimulationScenario(career.title); setSimulationScenario(sim); setSimAnswer(null); } setIsPracticeLoading(false); };
-
   useEffect(() => { const initPracticeBank = async () => { if (activeTab === 'practice') { setIsPracticeLoading(true); const savedData = getPracticeData(user.id, career.id); if (savedData && savedData.questions.length > 0) { setPracticeTopics(savedData.topics || []); setPracticeQuestionBank(savedData.questions || []); setInterviewQuestionBank(savedData.interviews || []); } else { try { const [topics, qs, iqs] = await Promise.all([generatePracticeTopics(career.title), generatePracticeQuestions(career.title), generateCompanyInterviewQuestions(career.title, 'All')]); setPracticeTopics(topics); setPracticeQuestionBank(qs); setInterviewQuestionBank(iqs); savePracticeData(user.id, career.id, { topics, questions: qs, interviews: iqs }); } catch(e) { console.error("Failed to init practice bank", e); } } setIsPracticeLoading(false); } }; initPracticeBank(); }, [career.id, activeTab]);
-
   useEffect(() => { let filteredQs = practiceQuestionBank; if (selectedTopic) filteredQs = practiceQuestionBank.filter(q => q.topic === selectedTopic); if (practiceSearch && practiceTab === 'quiz') filteredQs = practiceQuestionBank.filter(q => q.question.toLowerCase().includes(practiceSearch.toLowerCase())); setPracticeQuestions(filteredQs); let filteredIQs = interviewQuestionBank; if (companyFilter !== 'All' && companyFilter !== 'AI Challenge') filteredIQs = interviewQuestionBank.filter(q => q.company === companyFilter); if (practiceSearch && practiceTab === 'interview') filteredIQs = interviewQuestionBank.filter(q => q.question.toLowerCase().includes(practiceSearch.toLowerCase())); setInterviewQuestions(filteredIQs); }, [selectedTopic, companyFilter, practiceSearch, practiceQuestionBank, interviewQuestionBank, practiceTab]);
-
   const handleLoadMorePractice = async () => { setIsLoadingMore(true); try { const newQs = await generatePracticeQuestions(career.title, selectedTopic || undefined); const updatedBank = [...practiceQuestionBank, ...newQs]; setPracticeQuestionBank(updatedBank); savePracticeData(user.id, career.id, { questions: updatedBank }); } catch(e) { console.error(e); } finally { setIsLoadingMore(false); } };
   const handleLoadMoreInterview = async () => { setIsLoadingMore(true); try { const newQs = await generateCompanyInterviewQuestions(career.title, companyFilter); const updatedBank = [...interviewQuestionBank, ...newQs]; setInterviewQuestionBank(updatedBank); savePracticeData(user.id, career.id, { interviews: updatedBank }); } catch(e) { console.error(e); } finally { setIsLoadingMore(false); } };
   const handleAICustomChallenge = async () => { setIsPracticeLoading(true); try { const params = { topic: customGenTopic || career.title, difficulty: customGenDifficulty }; const iqs = await generateCompanyInterviewQuestions(career.title, 'AI Challenge', params); setInterviewQuestions(iqs); } catch (e) { console.error(e); } finally { setIsPracticeLoading(false); } };
 
-  useEffect(() => { const checkDailyQuiz = async () => { if (activeTab !== 'home') return; const today = new Date().toISOString().split('T')[0]; if (user.lastQuizDate === today) { setQuizState('already_done'); return; } const cachedQuiz = getDailyQuizCache(user.id, career.id); if (cachedQuiz) { setDailyQuiz(cachedQuiz); setQuizState('active'); return; } setQuizState('loading'); try { const quiz = await generateDailyQuiz(career.title); if (quiz) { setDailyQuiz(quiz); saveDailyQuizCache(user.id, career.id, quiz); setQuizState('active'); } else { setQuizState('already_done'); } } catch (e) { setQuizState('already_done'); } }; checkDailyQuiz(); }, [activeTab, career.title, user.lastQuizDate, user.id, career.id]);
-  const handleQuizAnswer = (index: number) => { if (!dailyQuiz || selectedQuizOption !== null) return; setSelectedQuizOption(index); const isRight = index === dailyQuiz.correctIndex; setIsQuizCorrect(isRight); if (isRight) { setShowConfetti(true); const today = new Date().toISOString().split('T')[0]; let newStreak = (user.streak || 0); if (user.lastQuizDate) { const last = new Date(user.lastQuizDate); const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1); const yesterdayStr = yesterday.toISOString().split('T')[0]; if (user.lastQuizDate === yesterdayStr) newStreak += 1; else newStreak = 1; } else { newStreak = 1; } const newXp = (user.xp || 0) + 10; const updatedUser = { ...user, streak: newStreak, xp: newXp, lastQuizDate: today }; setUser(updatedUser); saveUser(updatedUser); setTimeout(() => setShowConfetti(false), 3000); } else { const today = new Date().toISOString().split('T')[0]; const updatedUser = { ...user, lastQuizDate: today, streak: 0 }; setUser(updatedUser); saveUser(updatedUser); } setTimeout(() => setQuizState('completed'), 2000); };
+  // --- UPDATED DAILY QUIZ LOGIC ---
+  useEffect(() => {
+    const checkDailyQuiz = async () => {
+        if (activeTab !== 'home') return;
+        
+        if (prevCareerIdRef.current !== career.id) {
+            setDailyQuiz(null);
+            setSelectedQuizOption(null);
+            setIsQuizCorrect(null);
+            setShowConfetti(false);
+            setQuizState('loading');
+            prevCareerIdRef.current = career.id;
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        
+        if (currentCareerDetails?.lastQuizDate === today) {
+            if (!showConfetti && quizState !== 'completed') {
+                setQuizState('already_done');
+            }
+            return;
+        }
+
+        const cachedQuiz = getDailyQuizCache(user.id, career.id);
+        if (cachedQuiz) {
+            setDailyQuiz(cachedQuiz);
+            setQuizState('active');
+            return;
+        }
+
+        setQuizState('loading');
+        try {
+            const quiz = await generateDailyQuiz(career.title);
+            if (quiz) {
+                setDailyQuiz(quiz);
+                saveDailyQuizCache(user.id, career.id, quiz); 
+                setQuizState('active');
+            } else {
+                setQuizState('already_done');
+            }
+        } catch (e) {
+            setQuizState('already_done');
+        }
+    };
+    checkDailyQuiz();
+  }, [activeTab, career.title, user.id, career.id, currentCareerDetails?.lastQuizDate]);
+
+  const handleQuizAnswer = (index: number) => { 
+      if (!dailyQuiz || selectedQuizOption !== null) return; 
+      setSelectedQuizOption(index); 
+      const isRight = index === dailyQuiz.correctIndex; 
+      setIsQuizCorrect(isRight); 
+      const today = new Date().toISOString().split('T')[0]; 
+      const updatedActiveCareers = user.activeCareers.map(c => c.careerId === career.id ? { ...c, lastQuizDate: today } : c); 
+      if (isRight) { 
+          setShowConfetti(true); 
+          let newStreak = user.streak || 0; 
+          const alreadyDidQuizToday = user.activeCareers.some(c => c.lastQuizDate === today);
+          if (!alreadyDidQuizToday) newStreak += 1;
+          const newXp = (user.xp || 0) + 10; 
+          const updatedUser = { ...user, activeCareers: updatedActiveCareers, streak: newStreak, xp: newXp }; 
+          setUser(updatedUser); 
+          saveUser(updatedUser); 
+          setTimeout(() => setShowConfetti(false), 3000); 
+      } else { 
+          const updatedUser = { ...user, activeCareers: updatedActiveCareers, streak: 0 }; 
+          setUser(updatedUser); 
+          saveUser(updatedUser); 
+      } 
+      setTimeout(() => setQuizState('completed'), 2000); 
+  };
+
   const handleSimulationSearch = async () => { setIsPracticeLoading(true); const sim = await generateSimulationScenario(career.title); setSimulationScenario(sim); setSimAnswer(null); setIsPracticeLoading(false); }
   const handleSimAnswer = (index: number) => { if (!simulationScenario || simAnswer !== null) return; setSimAnswer(index); if (index === simulationScenario.correctIndex) { const updatedUser = { ...user, xp: (user.xp || 0) + 10 }; setUser(updatedUser); saveUser(updatedUser); showToastMsg("Sim Success! +10 XP"); } };
   const toggleAnswerReveal = (id: string) => { const next = new Set(visibleAnswers); if (next.has(id)) next.delete(id); else next.add(id); setVisibleAnswers(next); };
@@ -398,6 +231,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const handleAdaptation = async (type: any, customTargetDate?: string) => { if (!currentCareerDetails || !roadmap) return; setShowDateStrategyModal(false); setShowPhaseCompletionModal(false); setIsAdapting(true); try { const completedPhases = roadmap.filter(p => p.items.every(i => i.status === 'completed')); const lastCompletedPhaseIndex = completedPhases.length; const { educationYear, targetCompletionDate, experienceLevel, focusAreas } = currentCareerDetails; let targetDateToUse = customTargetDate || targetCompletionDate; if (targetDateToUse !== targetCompletionDate) { const updatedCareers = user.activeCareers.map(c => c.careerId === career.id ? { ...c, targetCompletionDate: targetDateToUse } : c); const updatedUser = { ...user, activeCareers: updatedCareers }; setUser(updatedUser); saveUser(updatedUser); } const contextStr = `User has completed ${completedPhases.length} phases. Proceed to generate the REMAINING phases starting from Phase ${lastCompletedPhaseIndex + 1}.`; const newPhases = await generateRoadmap(career.title, educationYear, targetDateToUse, experienceLevel, focusAreas || '', { type, progressStr: contextStr, startingPhaseNumber: lastCompletedPhaseIndex + 1 }); const finalMap = [...completedPhases, ...newPhases]; setRoadmap(finalMap); saveRoadmap(user.id, career.id, finalMap); showToastMsg("Nova has re-architected your roadmap."); } catch (e) { console.error("Adaptation failed", e); showToastMsg("AI is busy. Please try again later."); } finally { setIsAdapting(false); } };
   const handleDateUpdateWithoutAI = (newDate: string) => { if (!currentCareerDetails) return; const updatedCareers = user.activeCareers.map(c => c.careerId === career.id ? { ...c, targetCompletionDate: newDate } : c); const updatedUser = { ...user, activeCareers: updatedCareers }; setUser(updatedUser); saveUser(updatedUser); setShowDateStrategyModal(false); showToastMsg("Target date updated."); };
   const handleFinishQuicker = () => { if (!currentCareerDetails || !roadmap) return; const daysNeeded = calculateRemainingDays(roadmap); const newTarget = new Date(); newTarget.setHours(12, 0, 0, 0); const offset = Math.max(0, daysNeeded - 1); newTarget.setDate(newTarget.getDate() + offset); const year = newTarget.getFullYear(); const month = String(newTarget.getMonth() + 1).padStart(2, '0'); const day = String(newTarget.getDate()).padStart(2, '0'); const newDateStr = `${year}-${month}-${day}`; const updatedCareers = user.activeCareers.map(c => c.careerId === career.id ? { ...c, targetCompletionDate: newDateStr } : c); const u = { ...user, activeCareers: updatedCareers }; setUser(u); saveUser(u); setShowPhaseCompletionModal(false); showToastMsg("Target date updated to finish quicker."); };
+  const handleEditStartDate = (newDateStr: string) => { if (!currentCareerDetails) return; const parts = newDateStr.split('-'); const newStartDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0).getTime(); const updatedCareers = user.activeCareers.map(c => c.careerId === career.id ? { ...c, addedAt: newStartDate } : c); const u = { ...user, activeCareers: updatedCareers }; setUser(u); saveUser(u); showToastMsg("Start date updated."); };
   const initiateDateUpdate = () => { if (!pendingTargetDate || !currentCareerDetails) return; const oldDateParts = currentCareerDetails.targetCompletionDate.split('-'); const oldDate = new Date(parseInt(oldDateParts[0]), parseInt(oldDateParts[1]) - 1, parseInt(oldDateParts[2])).getTime(); const newDateParts = pendingTargetDate.split('-'); const newDate = new Date(parseInt(newDateParts[0]), parseInt(newDateParts[1]) - 1, parseInt(newDateParts[2])).getTime(); setShowDateEditModal(false); setShowDateStrategyModal(true); setDateStrategyType(newDate > oldDate ? 'extension' : 'shortening'); };
   const handleSwitchCareer = (careerId: string) => { setIsRoadmapLoading(true); setShowCareerMenu(false); setRoadmap(null); setNews([]); setTimeout(() => { const savedCareer = getCareerData(user.id, careerId); const savedRoadmap = getRoadmap(user.id, careerId); if (savedCareer) { setCareer(savedCareer); setRoadmap(savedRoadmap || []); const updatedUser = { ...user, currentCareerId: careerId }; setUser(updatedUser); saveUser(updatedUser); showToastMsg(`Nova: Switched focus to ${savedCareer.title}`); } setIsRoadmapLoading(false); setActiveTab('home'); }, 50); };
   const handleSwitchCareerFromRoadmap = (careerId: string) => { setIsRoadmapLoading(true); setRoadmap(null); setTimeout(() => { const savedCareer = getCareerData(user.id, careerId); const savedRoadmap = getRoadmap(user.id, careerId); if (savedCareer) { setCareer(savedCareer); setRoadmap(savedRoadmap || []); const updatedUser = { ...user, currentCareerId: careerId }; setUser(updatedUser); saveUser(updatedUser); showToastMsg(`Nova: Switched focus to ${savedCareer.title}`); } setIsRoadmapLoading(false); }, 50); };
@@ -406,66 +240,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const getDaysRemaining = () => { if (roadmap && roadmap.length > 0) { const allCompleted = roadmap.every(phase => phase.items.every(item => item.status === 'completed')); if (allCompleted) return 0; } if (!currentCareerDetails?.targetCompletionDate) return 0; const parts = currentCareerDetails.targetCompletionDate.split('-'); if (parts.length !== 3) return 0; const targetDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0); const today = new Date(); today.setHours(12, 0, 0, 0); const diffTime = targetDate.getTime() - today.getTime(); const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); return diffDays >= 0 ? diffDays + 1 : 0; }
   const daysRemaining = getDaysRemaining();
   
-  // FIX: Stricter day-based pacing calculation
   const getPacingStatus = () => {
       if (!currentCareerDetails) return { status: 'on-track', days: 0, message: '' } as const;
-      
-      const startDate = new Date(currentCareerDetails.addedAt);
-      startDate.setHours(12, 0, 0, 0);
-      
-      const targetParts = currentCareerDetails.targetCompletionDate.split('-');
-      const targetDate = new Date(parseInt(targetParts[0]), parseInt(targetParts[1]) - 1, parseInt(targetParts[2]), 12, 0, 0);
-      
-      const today = new Date();
-      today.setHours(12, 0, 0, 0);
-
-      const totalDurationMs = targetDate.getTime() - startDate.getTime();
-      const totalDays = Math.max(1, Math.round(totalDurationMs / (1000 * 60 * 60 * 24)));
-      
-      const elapsedMs = today.getTime() - startDate.getTime();
-      const daysElapsed = Math.max(0, Math.round(elapsedMs / (1000 * 60 * 60 * 24)));
-
+      const startDate = new Date(currentCareerDetails.addedAt); startDate.setHours(12, 0, 0, 0);
+      const targetParts = currentCareerDetails.targetCompletionDate.split('-'); const targetDate = new Date(parseInt(targetParts[0]), parseInt(targetParts[1]) - 1, parseInt(targetParts[2]), 12, 0, 0);
+      const today = new Date(); today.setHours(12, 0, 0, 0);
+      const totalDurationMs = targetDate.getTime() - startDate.getTime(); const totalDays = Math.max(1, Math.round(totalDurationMs / (1000 * 60 * 60 * 24)));
+      const elapsedMs = today.getTime() - startDate.getTime(); const daysElapsed = Math.max(0, Math.round(elapsedMs / (1000 * 60 * 60 * 24)));
       if (daysElapsed > totalDays) return { status: 'critical', days: daysElapsed - totalDays, message: 'Target date passed' } as const;
-
-      // Calculate Total Items in Roadmap
-      let totalItems = 0;
-      let completedItems = 0;
-      if (roadmap) {
-          roadmap.forEach(p => p.items.forEach(i => {
-              totalItems++;
-              if (i.status === 'completed') completedItems++;
-          }));
-      }
-
+      let totalItems = 0; let completedItems = 0; if (roadmap) { roadmap.forEach(p => p.items.forEach(i => { totalItems++; if (i.status === 'completed') completedItems++; })); }
       if (totalItems === 0) return { status: 'on-track', days: 0, message: 'No tasks' } as const;
-
-      // Calculate "Velocity" (Items per Day required)
-      const itemsPerDay = totalItems / totalDays;
-
-      // Calculate "Expected Items" based on days elapsed
-      const expectedItems = itemsPerDay * daysElapsed;
-
-      // Calculate Difference in ITEMS, then convert to DAYS
-      const diffItems = completedItems - expectedItems;
-      const diffDays = diffItems / itemsPerDay; // Positive = Ahead, Negative = Behind
-
-      // FIX: SHOW "AHEAD" IF >= 1 DAY AHEAD.
-      // Logic: If diffDays is 1.1, you are more than 1 day ahead of schedule.
-      if (diffDays >= 1) { 
-           const d = Math.floor(diffDays);
-           if (d === 0) return { status: 'on-track', days: 0, message: 'On track' } as const;
-           return { status: 'ahead', days: d, message: `${d} day${d > 1 ? 's' : ''} ahead` } as const;
-      } else if (diffDays <= -1) { 
-           const d = Math.ceil(Math.abs(diffDays));
-           return { status: 'behind', days: d, message: `${d} day${d > 1 ? 's' : ''} behind` } as const;
-      }
-
+      const itemsPerDay = totalItems / totalDays; const expectedItems = itemsPerDay * daysElapsed; const diffItems = completedItems - expectedItems; const diffDays = diffItems / itemsPerDay; const roundedDays = Math.round(Math.abs(diffDays));
+      if (diffDays >= 1) { const d = Math.floor(diffDays); if (d === 0) return { status: 'on-track', days: 0, message: 'On track' } as const; return { status: 'ahead', days: d, message: `${d} day${d > 1 ? 's' : ''} ahead` } as const; } else if (diffDays <= -1) { const d = Math.ceil(Math.abs(diffDays)); return { status: 'behind', days: d, message: `${d} day${d > 1 ? 's' : ''} behind` } as const; }
       return { status: 'on-track', days: 0, message: 'On track' } as const;
   };
-  
   const pacing = getPacingStatus();
 
-  // Define renderContent explicitly inside the component scope
   const renderContent = () => {
     switch (activeTab) {
       case 'home':
