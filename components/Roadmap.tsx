@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { RoadmapPhase, UserProfile, RoadmapItem } from '../types';
 import { Subscription } from './Subscription';
@@ -441,11 +440,11 @@ export const Roadmap: React.FC<RoadmapProps> = ({
 
         {/* Pacing Alert */}
         {pacing.status !== 'on-track' && !isCompleted && (
-             <div className={`p-4 rounded-2xl border flex items-center gap-4 ${pacing.status === 'behind' ? 'bg-amber-900/10 border-amber-500/30 text-amber-200' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200'}`}>
-                 {pacing.status === 'behind' ? <AlertTriangle className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
+             <div className={`p-4 rounded-2xl border flex items-center gap-4 ${pacing.status === 'behind' ? 'bg-red-900/10 border-red-500/30 text-red-400' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200'}`}>
+                 {pacing.status === 'behind' ? <AlertTriangle className="h-5 w-5 text-red-500" /> : <CheckCircle className="h-5 w-5" />}
                  <div>
                     <div className="font-bold">{pacing.message}</div>
-                    <div className="text-xs opacity-80">
+                    <div className={`text-xs opacity-80 ${pacing.status === 'behind' ? 'text-red-300' : 'text-emerald-200'}`}>
                         {pacing.status === 'behind' ? "Try to complete extra modules today to catch up!" : "Great job! You are learning faster than planned."}
                     </div>
                  </div>

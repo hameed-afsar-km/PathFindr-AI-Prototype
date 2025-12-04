@@ -192,7 +192,7 @@ export const generateRoadmap = async (
     expLevel: string,
     focusAreas: string,
     adaptationContext?: { 
-        type: 'increase_difficulty' | 'relax_pace' | 'challenge_me' | 'reduce_difficulty_and_scope' | 'increase_difficulty_same_time' | 'maintain_pressure' | 'accelerate_pace',
+        type: 'increase_difficulty' | 'relax_pace' | 'challenge_me' | 'reduce_difficulty_and_scope' | 'increase_difficulty_same_time' | 'maintain_pressure' | 'accelerate_pace' | 'increase_difficulty_fill_gap' | 'reduce_difficulty' | 'adapt_roadmap_shorten',
         progressStr?: string,
         startingPhaseNumber?: number
     }
@@ -212,12 +212,13 @@ export const generateRoadmap = async (
            Context: ${adaptationContext.progressStr}.
            Start generating phases from Phase ${adaptationContext.startingPhaseNumber || 1}.
            Logic for '${adaptationContext.type}':
-           - increase_difficulty: User has extended their deadline. Keep all existing future tasks and add NEW, more advanced tasks to fill the extra time.
-           - relax_pace: User has extended their deadline. Take all existing future tasks and redistribute them evenly over the new, longer timeline. Do not add new tasks.
-           - challenge_me: User has shortened their deadline. Take all existing future tasks and compress them into the new, shorter timeline. This increases daily intensity.
-           - reduce_difficulty_and_scope: User has shortened their deadline. Regenerate a simpler future roadmap with fewer or easier tasks that still covers the basics to fit the shorter time.
-           - maintain_pressure: Keep timeline fixed, but optimize tasks for efficiency to catch up.
-           - accelerate_pace: Compress the remaining roadmap into a shorter timeline (High intensity).`
+           - increase_difficulty_fill_gap: User is AHEAD. Keep target date. FILL the gap days with NEW, advanced tasks. E.g., if 4 days tasks left but 10 days remaining, add tasks for exactly 6 days.
+           - relax_pace: User is AHEAD. Keep target date. REDISTRIBUTE remaining tasks over the remaining days (1 task/day) to lower intensity.
+           - reduce_difficulty: User is BEHIND. Simplify the remaining tasks to be completed faster, lowering the complexity but keeping the timeline.
+           - adapt_roadmap_shorten: User is BEHIND. Remove non-essential tasks to fit the roadmap into the remaining days. Prioritize "Must Haves".
+           - increase_difficulty: User extended deadline. Add advanced tasks to fill.
+           - challenge_me: User shortened deadline. Compress tasks.
+           - maintain_pressure: Optimize for efficiency.`
         : '';
 
     const prompt = `

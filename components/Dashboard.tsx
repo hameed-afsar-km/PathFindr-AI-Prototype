@@ -69,7 +69,54 @@ const ChatWindow: React.FC<{ isOpen: boolean; onClose: () => void; careerTitle: 
 const QuestionSkeletonCard = () => (<div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 animate-pulse"><div className="h-4 bg-slate-800 rounded w-3/4 mb-6"></div><div className="space-y-3"><div className="h-10 bg-slate-800 rounded-xl"></div><div className="h-10 bg-slate-800 rounded-xl"></div><div className="h-10 bg-slate-800 rounded-xl"></div><div className="h-10 bg-slate-800 rounded-xl"></div></div></div>);
 const InterviewSkeletonCard = () => (<div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 animate-pulse"><div className="flex justify-between items-start mb-4"><div className="h-4 bg-slate-800 rounded w-24"></div></div><div className="h-5 bg-slate-800 rounded w-full mb-6"></div><div className="h-10 bg-slate-800 rounded-xl"></div></div>);
 const CelebrationModal = ({ onClose }: { onClose: () => void }) => (<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}><div className="text-center pointer-events-auto bg-slate-900 border border-yellow-500/30 p-8 rounded-3xl shadow-2xl relative overflow-hidden"><div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-purple-500/10"></div><div className="relative z-10"><div className="text-6xl mb-6 animate-bounce">🏆</div><h2 className="text-3xl font-bold text-white mb-2">Congratulations!</h2><p className="text-slate-300 mb-8">You've completed the entire roadmap!</p><button onClick={onClose} className="px-8 py-3 bg-white text-slate-900 font-bold rounded-xl hover:bg-slate-200 transition-colors">Continue</button></div></div></div>);
-const PhaseCompletionModal = ({ onClose, onUpdateDate }: { onClose: () => void, onUpdateDate: () => void }) => (<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in"><div className="bg-slate-900 border border-emerald-500/30 p-8 rounded-3xl max-w-md w-full shadow-2xl relative"><h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2"><Zap className="h-6 w-6 text-yellow-400" /> Phase Complete!</h2><p className="text-slate-400 mb-6">You finished this phase ahead of schedule. Would you like to adjust your target date to finish the whole career path sooner?</p><div className="space-y-3"><button onClick={onUpdateDate} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-colors">Yes, Update Target Date</button><button onClick={onClose} className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-colors">No, Keep Original Schedule</button></div></div></div>);
+
+const PhaseAdaptationModal = ({ status, diff, onOptionSelect, onClose }: { status: 'ahead' | 'behind', diff: number, onOptionSelect: (option: string) => void, onClose: () => void }) => (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+        <div className={`bg-slate-900 border ${status === 'ahead' ? 'border-emerald-500/30' : 'border-amber-500/30'} p-8 rounded-3xl max-w-md w-full shadow-2xl relative`}>
+            <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
+                {status === 'ahead' ? <><Zap className="h-6 w-6 text-emerald-400" /> Amazing Pace!</> : <><AlertTriangle className="h-6 w-6 text-amber-400" /> Schedule Update</>}
+            </h2>
+            <p className="text-slate-400 mb-6">
+                You are {diff} days {status} of schedule. How should Nova adapt your journey?
+            </p>
+            <div className="space-y-3">
+                {status === 'ahead' ? (
+                    <>
+                        <button onClick={() => onOptionSelect('finish_quicker')} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-colors">Finish Quickly (Update Date)</button>
+                        <button onClick={() => onOptionSelect('increase_difficulty')} className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-colors">Increase Difficulty (Fill Time)</button>
+                        <button onClick={() => onOptionSelect('change_pace')} className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-colors">Change Pace (Relax)</button>
+                    </>
+                ) : (
+                    <>
+                         <button onClick={() => onOptionSelect('keep_same')} className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-colors">Keep Same Timeline</button>
+                         <button onClick={() => onOptionSelect('reduce_difficulty')} className="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl transition-colors">Reduce Difficulty</button>
+                         <button onClick={() => onOptionSelect('adapt_roadmap')} className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-colors">Adapt Roadmap (Essentials Only)</button>
+                    </>
+                )}
+                <button onClick={onClose} className="mt-4 text-xs text-slate-500 hover:text-white mx-auto block">Dismiss</button>
+            </div>
+        </div>
+    </div>
+);
+
+const PhaseCompletionModal = ({ onClose, onUpdateDate }: { onClose: () => void, onUpdateDate: () => void }) => (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+        <div className="bg-slate-900 border border-emerald-500/30 p-8 rounded-3xl max-w-md w-full shadow-2xl relative text-center">
+             <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 className="h-8 w-8 text-emerald-400" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">Phase Completed!</h2>
+            <p className="text-slate-400 mb-6">
+                You've reached a major milestone.
+            </p>
+            <div className="flex gap-3">
+                 <button onClick={onUpdateDate} className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-colors text-sm">Finish Quicker</button>
+                 <button onClick={onClose} className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-colors text-sm">Continue</button>
+            </div>
+        </div>
+    </div>
+);
+
 const FeedbackModal = ({ onClose, text, setText }: { onClose: () => void, text: string, setText: (s: string) => void }) => (<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in"><div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl max-w-md w-full shadow-2xl"><div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-white">Send Feedback</h2><button onClick={onClose}><X className="h-5 w-5 text-slate-500" /></button></div><textarea className="w-full h-32 bg-slate-950 border border-slate-800 rounded-xl p-4 text-white focus:border-indigo-500 outline-none resize-none mb-4" placeholder="Tell us what you think..." value={text} onChange={e => setText(e.target.value)} /><button onClick={() => { alert('Feedback sent!'); onClose(); setText(''); }} className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl">Send Message</button></div></div>);
 const ConfirmationModal = ({ action, onConfirm, onCancel }: { action: {type: string, inputValue: string}, onConfirm: () => void, onCancel: () => void }) => (<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in"><div className="bg-slate-900 border border-red-500/30 p-6 rounded-3xl max-w-md w-full shadow-2xl"><div className="flex items-center gap-3 mb-4 text-red-400"><AlertTriangle className="h-6 w-6" /><h2 className="text-xl font-bold">Are you sure?</h2></div><p className="text-slate-300 mb-6">{action.type === 'reset_all' ? "This will wipe all progress across all careers." : "This will permanently delete your account and all data."}</p><div className="flex gap-3"><button onClick={onCancel} className="flex-1 py-3 bg-slate-800 text-white font-bold rounded-xl">Cancel</button><button onClick={onConfirm} className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl">Confirm</button></div></div></div>);
 const DeleteCareerConfirmationModal = ({ onConfirm, onCancel }: { onConfirm: () => void, onCancel: () => void }) => (<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in"><div className="bg-slate-900 border border-red-500/30 p-6 rounded-3xl max-w-md w-full shadow-2xl"><div className="flex items-center gap-3 mb-4 text-red-400"><Trash2 className="h-6 w-6" /><h2 className="text-xl font-bold">Delete Career Path?</h2></div><p className="text-slate-300 mb-6">This will remove this career and its roadmap history.</p><div className="flex gap-3"><button onClick={onCancel} className="flex-1 py-3 bg-slate-800 text-white font-bold rounded-xl">Cancel</button><button onClick={onConfirm} className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl">Delete</button></div></div></div>);
@@ -112,7 +159,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [isPracticeLoading, setIsPracticeLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isAdapting, setIsAdapting] = useState(false);
+  const [phaseAdaptationState, setPhaseAdaptationState] = useState<{status: 'ahead'|'behind', diff: number, phaseIndex: number} | null>(null);
   const [showPhaseCompletionModal, setShowPhaseCompletionModal] = useState(false);
+
   const [showDateEditModal, setShowDateEditModal] = useState(false);
   const [pendingTargetDate, setPendingTargetDate] = useState('');
   const [showDateStrategyModal, setShowDateStrategyModal] = useState(false);
@@ -223,38 +272,221 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const handleSimAnswer = (index: number) => { if (!simulationScenario || simAnswer !== null) return; setSimAnswer(index); if (index === simulationScenario.correctIndex) { const updatedUser = { ...user, xp: (user.xp || 0) + 10 }; setUser(updatedUser); saveUser(updatedUser); showToastMsg("Sim Success! +10 XP"); } };
   const toggleAnswerReveal = (id: string) => { const next = new Set(visibleAnswers); if (next.has(id)) next.delete(id); else next.add(id); setVisibleAnswers(next); };
   const handleSubscribe = (plan: 'monthly' | 'yearly') => { const updatedUser = { ...user, subscriptionStatus: plan }; setUser(updatedUser); saveUser(updatedUser); };
-  const handleProgress = (itemId: string) => { if (!roadmap) return; const now = Date.now(); let phaseIndexToCheck = -1; let wasPhaseCompleted = false; for (let i = 0; i < roadmap.length; i++) { if (roadmap[i].items.some(item => item.id === itemId)) { phaseIndexToCheck = i; wasPhaseCompleted = roadmap[i].items.every(item => item.status === 'completed'); break; } } const newRoadmap = roadmap.map(phase => ({ ...phase, items: phase.items.map(item => item.id === itemId ? { ...item, status: item.status === 'completed' ? 'pending' : 'completed', completedAt: item.status === 'completed' ? undefined : now } as RoadmapItem : item) })); setRoadmap(newRoadmap); saveRoadmap(user.id, career.id, newRoadmap); if (phaseIndexToCheck !== -1) { const isNowCompleted = newRoadmap[phaseIndexToCheck].items.every(i => i.status === 'completed'); const isAllCompleted = newRoadmap.every(p => p.items.every(i => i.status === 'completed')); if (isNowCompleted && !wasPhaseCompleted && !isAllCompleted) { setTimeout(() => setShowPhaseCompletionModal(true), 100); } } };
+  
+  // Helper for Calendar Days
+  const getCalendarDaysRemaining = () => {
+      if (!currentCareerDetails?.targetCompletionDate) return 0;
+      const parts = currentCareerDetails.targetCompletionDate.split('-');
+      // Month is 0-indexed in JS Date
+      const targetDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
+      const today = new Date();
+      today.setHours(12, 0, 0, 0);
+      const diffTime = targetDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      // Added +1 to include today as a workable day
+      return diffDays + 1;
+  };
+
+  // Helper for Work Days (Tasks)
+  const getWorkDaysRemaining = () => {
+      if (!roadmap) return 0;
+      return calculateRemainingDays(roadmap);
+  };
+
+  const calendarDaysLeft = getCalendarDaysRemaining();
+  const workDaysLeft = getWorkDaysRemaining();
+  
+  // The user requested: "days remaining be should number of tasks remaining"
+  const daysRemaining = workDaysLeft; 
+
+  const getPacingStatus = () => {
+      if (!currentCareerDetails || !roadmap) return { status: 'on-track', days: 0, message: 'On track' } as const;
+      
+      const rawDiff = calendarDaysLeft - workDaysLeft;
+      
+      // User feedback: "days ahead showing 1 day extra".
+      // We adjust positive diffs by subtracting 1 to account for the buffer day being "extra" in their view.
+      // This ensures 10 tasks in 10 days (which gives 11 calendar days incl today) shows as "On Track" (0) instead of "Ahead" (1).
+      // However, if rawDiff is negative (Behind), we use it directly as the magnitude of lateness.
+      const diff = rawDiff > 0 ? rawDiff - 1 : rawDiff;
+
+      if (diff > 0) {
+           return { status: 'ahead', days: diff, message: `${diff} day${diff > 1 ? 's' : ''} ahead` } as const;
+      } else if (diff < 0) {
+           return { status: 'behind', days: Math.abs(diff), message: `${Math.abs(diff)} day${Math.abs(diff) > 1 ? 's' : ''} behind` } as const;
+      } else {
+           return { status: 'on-track', days: 0, message: 'On track' } as const;
+      }
+  };
+  
+  const pacing = getPacingStatus();
+
+  // Updated handleProgress with Phase Detection
+  const handleProgress = (itemId: string) => { 
+      if (!roadmap) return; 
+      const now = Date.now(); 
+      let phaseIndexToCheck = -1; 
+      let wasPhaseCompleted = false; 
+      
+      for (let i = 0; i < roadmap.length; i++) { 
+          if (roadmap[i].items.some(item => item.id === itemId)) { 
+              phaseIndexToCheck = i; 
+              wasPhaseCompleted = roadmap[i].items.every(item => item.status === 'completed'); 
+              break; 
+          } 
+      } 
+      
+      const newRoadmap = roadmap.map(phase => ({ 
+          ...phase, 
+          items: phase.items.map(item => item.id === itemId ? { ...item, status: item.status === 'completed' ? 'pending' : 'completed', completedAt: item.status === 'completed' ? undefined : now } as RoadmapItem : item) 
+      })); 
+      
+      setRoadmap(newRoadmap); 
+      saveRoadmap(user.id, career.id, newRoadmap); 
+      
+      if (phaseIndexToCheck !== -1) { 
+          const phase = newRoadmap[phaseIndexToCheck];
+          const isNowCompleted = phase.items.every(i => i.status === 'completed'); 
+          
+          if (isNowCompleted && !wasPhaseCompleted) { 
+              setShowConfetti(true);
+              setTimeout(() => setShowConfetti(false), 3000);
+
+              // Recalculate using the *new* roadmap
+              const currentWorkDaysLeft = calculateRemainingDays(newRoadmap);
+              const currentCalendarDaysLeft = getCalendarDaysRemaining(); 
+              
+              const rawDiff = currentCalendarDaysLeft - currentWorkDaysLeft;
+              // Consistent adjustment for modal trigger
+              const diff = rawDiff > 0 ? rawDiff - 1 : rawDiff;
+              
+              if (diff > 0) { // Ahead
+                   setPhaseAdaptationState({ status: 'ahead', diff, phaseIndex: phaseIndexToCheck });
+              } else if (diff < 0) { // Behind
+                   setPhaseAdaptationState({ status: 'behind', diff: Math.abs(diff), phaseIndex: phaseIndexToCheck });
+              } else {
+                   showToastMsg(`Phase ${phaseIndexToCheck + 1} Completed! You are exactly on track.`);
+              }
+          } 
+      } 
+  };
+
   const handleResetPhase = (phaseIndex: number) => { if (!roadmap) return; const newRoadmap = roadmap.map((phase, idx) => { if (idx === phaseIndex) { return { ...phase, items: phase.items.map(item => ({ ...item, status: 'pending' as const, completedAt: undefined })) }; } return phase; }); setRoadmap(newRoadmap); saveRoadmap(user.id, career.id, newRoadmap); };
   const handleResetRoadmap = () => { if (!roadmap) return; const resetMap = roadmap.map(phase => ({ ...phase, items: phase.items.map(item => ({ ...item, status: 'pending' as const, completedAt: undefined } as RoadmapItem)) })); setRoadmap(resetMap); saveRoadmap(user.id, career.id, resetMap); };
   const executeResetAll = () => { user.activeCareers.forEach(c => { const r = getRoadmap(user.id, c.careerId); if (r) { const resetR = r.map(p => ({...p, items: p.items.map(i => ({...i, status: 'pending', completedAt: undefined} as RoadmapItem))})); saveRoadmap(user.id, c.careerId, resetR); } }); handleResetRoadmap(); showToastMsg("All career progress has been reset."); setConfirmAction(null); };
   const executeDeleteAccount = () => { onDeleteAccount(); setConfirmAction(null); };
-  const handleAdaptation = async (type: any, customTargetDate?: string) => { if (!currentCareerDetails || !roadmap) return; setShowDateStrategyModal(false); setShowPhaseCompletionModal(false); setIsAdapting(true); try { const completedPhases = roadmap.filter(p => p.items.every(i => i.status === 'completed')); const lastCompletedPhaseIndex = completedPhases.length; const { educationYear, targetCompletionDate, experienceLevel, focusAreas } = currentCareerDetails; let targetDateToUse = customTargetDate || targetCompletionDate; if (targetDateToUse !== targetCompletionDate) { const updatedCareers = user.activeCareers.map(c => c.careerId === career.id ? { ...c, targetCompletionDate: targetDateToUse } : c); const updatedUser = { ...user, activeCareers: updatedCareers }; setUser(updatedUser); saveUser(updatedUser); } const contextStr = `User has completed ${completedPhases.length} phases. Proceed to generate the REMAINING phases starting from Phase ${lastCompletedPhaseIndex + 1}.`; const newPhases = await generateRoadmap(career.title, educationYear, targetDateToUse, experienceLevel, focusAreas || '', { type, progressStr: contextStr, startingPhaseNumber: lastCompletedPhaseIndex + 1 }); const finalMap = [...completedPhases, ...newPhases]; setRoadmap(finalMap); saveRoadmap(user.id, career.id, finalMap); showToastMsg("Nova has re-architected your roadmap."); } catch (e) { console.error("Adaptation failed", e); showToastMsg("AI is busy. Please try again later."); } finally { setIsAdapting(false); } };
+  
+  const handleAdaptation = async (type: any, customTargetDate?: string, extraContext?: string) => { 
+      if (!currentCareerDetails || !roadmap) return; 
+      setShowDateStrategyModal(false); 
+      setPhaseAdaptationState(null);
+      setIsAdapting(true); 
+      try { 
+          // FIX: Correctly identify and preserve ALL completed tasks, including in partial phases
+          const preservedPhases: RoadmapPhase[] = [];
+          
+          for (const phase of roadmap) {
+              const completedItems = phase.items.filter(i => i.status === 'completed');
+              if (completedItems.length === phase.items.length) {
+                  // Fully completed phase
+                  preservedPhases.push(phase);
+              } else if (completedItems.length > 0) {
+                  // Partially completed phase - preserve only completed items
+                  preservedPhases.push({ ...phase, items: completedItems });
+                  break; // Stop after first partial phase, regenerate the rest
+              } else {
+                  break; // Stop at first pending phase
+              }
+          }
+
+          const { educationYear, targetCompletionDate, experienceLevel, focusAreas } = currentCareerDetails; 
+          let targetDateToUse = customTargetDate || targetCompletionDate; 
+          
+          if (targetDateToUse !== targetCompletionDate) { 
+              const updatedCareers = user.activeCareers.map(c => c.careerId === career.id ? { ...c, targetCompletionDate: targetDateToUse } : c); 
+              const updatedUser = { ...user, activeCareers: updatedCareers }; 
+              setUser(updatedUser); 
+              saveUser(updatedUser); 
+          } 
+          
+          const completedCount = preservedPhases.reduce((acc, p) => acc + p.items.length, 0);
+          const contextStr = `${extraContext || ''} User has completed ${completedCount} tasks. We are preserving these. Please generate the REMAINING roadmap tasks to reach the goal. Adapt the difficulty/pace according to mode: ${type}.`; 
+          
+          // Determine starting phase number. 
+          // We start from next available index so AI continues the numbering.
+          const startPhaseNum = preservedPhases.length + 1;
+
+          const newPhases = await generateRoadmap(
+              career.title, 
+              educationYear, 
+              targetDateToUse, 
+              experienceLevel, 
+              focusAreas || '', 
+              { type, progressStr: contextStr, startingPhaseNumber: startPhaseNum }
+          ); 
+          
+          const finalMap = [...preservedPhases, ...newPhases]; 
+          setRoadmap(finalMap); 
+          saveRoadmap(user.id, career.id, finalMap); 
+          showToastMsg("Nova has re-architected your roadmap."); 
+      } catch (e) { 
+          console.error("Adaptation failed", e); 
+          showToastMsg("AI is busy. Please try again later."); 
+      } finally { 
+          setIsAdapting(false); 
+      } 
+  };
+  
   const handleDateUpdateWithoutAI = (newDate: string) => { if (!currentCareerDetails) return; const updatedCareers = user.activeCareers.map(c => c.careerId === career.id ? { ...c, targetCompletionDate: newDate } : c); const updatedUser = { ...user, activeCareers: updatedCareers }; setUser(updatedUser); saveUser(updatedUser); setShowDateStrategyModal(false); showToastMsg("Target date updated."); };
-  const handleFinishQuicker = () => { if (!currentCareerDetails || !roadmap) return; const daysNeeded = calculateRemainingDays(roadmap); const newTarget = new Date(); newTarget.setHours(12, 0, 0, 0); const offset = Math.max(0, daysNeeded - 1); newTarget.setDate(newTarget.getDate() + offset); const year = newTarget.getFullYear(); const month = String(newTarget.getMonth() + 1).padStart(2, '0'); const day = String(newTarget.getDate()).padStart(2, '0'); const newDateStr = `${year}-${month}-${day}`; const updatedCareers = user.activeCareers.map(c => c.careerId === career.id ? { ...c, targetCompletionDate: newDateStr } : c); const u = { ...user, activeCareers: updatedCareers }; setUser(u); saveUser(u); setShowPhaseCompletionModal(false); showToastMsg("Target date updated to finish quicker."); };
+  
+  const handleFinishQuicker = () => { 
+      if (!currentCareerDetails || !roadmap) return; 
+      
+      const workDaysNeeded = calculateRemainingDays(roadmap);
+      const newTarget = new Date();
+      // Set to noon to avoid timezone issues
+      newTarget.setHours(12, 0, 0, 0);
+      newTarget.setDate(newTarget.getDate() + workDaysNeeded);
+      
+      const year = newTarget.getFullYear();
+      const month = String(newTarget.getMonth() + 1).padStart(2, '0');
+      const day = String(newTarget.getDate()).padStart(2, '0');
+      const newDateStr = `${year}-${month}-${day}`;
+      
+      const updatedCareers = user.activeCareers.map(c => c.careerId === career.id ? { ...c, targetCompletionDate: newDateStr } : c); 
+      const u = { ...user, activeCareers: updatedCareers }; 
+      setUser(u); 
+      saveUser(u); 
+      setPhaseAdaptationState(null);
+      showToastMsg("Target date updated to finish quicker."); 
+  };
+
+  const handlePhaseAdaptationOption = (option: string) => {
+      if (!phaseAdaptationState) return;
+      const { status, diff } = phaseAdaptationState;
+      
+      if (option === 'finish_quicker') {
+          handleFinishQuicker();
+      } else if (option === 'increase_difficulty') {
+          handleAdaptation('increase_difficulty_fill_gap', undefined, `User is ahead by ${diff} days. Generate meaningful, advanced tasks for exactly ${diff} days to fill this gap without changing the target date.`);
+      } else if (option === 'change_pace') {
+          handleAdaptation('relax_pace', undefined, `User is ahead. Redistribute the remaining tasks over the remaining calendar days to relax the pace.`);
+      } else if (option === 'keep_same') {
+          setPhaseAdaptationState(null);
+          showToastMsg("Schedule maintained.");
+      } else if (option === 'reduce_difficulty') {
+          handleAdaptation('reduce_difficulty', undefined, `User is behind by ${diff} days. Simplify the remaining tasks to fit the schedule.`);
+      } else if (option === 'adapt_roadmap') {
+          handleAdaptation('adapt_roadmap_shorten', undefined, `User is behind. Reduce the scope of the roadmap to cover only essentials within the remaining time.`);
+      }
+  };
+
   const handleEditStartDate = (newDateStr: string) => { if (!currentCareerDetails) return; const parts = newDateStr.split('-'); const newStartDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0).getTime(); const updatedCareers = user.activeCareers.map(c => c.careerId === career.id ? { ...c, addedAt: newStartDate } : c); const u = { ...user, activeCareers: updatedCareers }; setUser(u); saveUser(u); showToastMsg("Start date updated."); };
   const initiateDateUpdate = () => { if (!pendingTargetDate || !currentCareerDetails) return; const oldDateParts = currentCareerDetails.targetCompletionDate.split('-'); const oldDate = new Date(parseInt(oldDateParts[0]), parseInt(oldDateParts[1]) - 1, parseInt(oldDateParts[2])).getTime(); const newDateParts = pendingTargetDate.split('-'); const newDate = new Date(parseInt(newDateParts[0]), parseInt(newDateParts[1]) - 1, parseInt(newDateParts[2])).getTime(); setShowDateEditModal(false); setShowDateStrategyModal(true); setDateStrategyType(newDate > oldDate ? 'extension' : 'shortening'); };
   const handleSwitchCareer = (careerId: string) => { setIsRoadmapLoading(true); setShowCareerMenu(false); setRoadmap(null); setNews([]); setTimeout(() => { const savedCareer = getCareerData(user.id, careerId); const savedRoadmap = getRoadmap(user.id, careerId); if (savedCareer) { setCareer(savedCareer); setRoadmap(savedRoadmap || []); const updatedUser = { ...user, currentCareerId: careerId }; setUser(updatedUser); saveUser(updatedUser); showToastMsg(`Nova: Switched focus to ${savedCareer.title}`); } setIsRoadmapLoading(false); setActiveTab('home'); }, 50); };
   const handleSwitchCareerFromRoadmap = (careerId: string) => { setIsRoadmapLoading(true); setRoadmap(null); setTimeout(() => { const savedCareer = getCareerData(user.id, careerId); const savedRoadmap = getRoadmap(user.id, careerId); if (savedCareer) { setCareer(savedCareer); setRoadmap(savedRoadmap || []); const updatedUser = { ...user, currentCareerId: careerId }; setUser(updatedUser); saveUser(updatedUser); showToastMsg(`Nova: Switched focus to ${savedCareer.title}`); } setIsRoadmapLoading(false); }, 50); };
   const handleDeleteCareerRequest = (careerId: string) => setCareerToDelete(careerId);
   const executeDeleteCareer = () => { if (!careerToDelete) return; const careerId = careerToDelete; const updatedActiveCareers = user.activeCareers.filter(c => c.careerId !== careerId); localStorage.removeItem(`pathfinder_career_data_${user.id}_${careerId}`); localStorage.removeItem(`pathfinder_roadmap_${user.id}_${careerId}`); if (updatedActiveCareers.length === 0) { const updatedUser = { ...user, activeCareers: [], currentCareerId: undefined }; setUser(updatedUser); saveUser(updatedUser); setCareer(null); setRoadmap(null); onAddCareer(); showToastMsg("Career deleted."); } else { let nextCareerId = user.currentCareerId; if (careerId === user.currentCareerId) nextCareerId = updatedActiveCareers[0].careerId; const updatedUser = { ...user, activeCareers: updatedActiveCareers, currentCareerId: nextCareerId }; setUser(updatedUser); saveUser(updatedUser); if (careerId === user.currentCareerId && nextCareerId) handleSwitchCareer(nextCareerId); showToastMsg("Career deleted successfully."); } setCareerToDelete(null); };
-  const getDaysRemaining = () => { if (roadmap && roadmap.length > 0) { const allCompleted = roadmap.every(phase => phase.items.every(item => item.status === 'completed')); if (allCompleted) return 0; } if (!currentCareerDetails?.targetCompletionDate) return 0; const parts = currentCareerDetails.targetCompletionDate.split('-'); if (parts.length !== 3) return 0; const targetDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0); const today = new Date(); today.setHours(12, 0, 0, 0); const diffTime = targetDate.getTime() - today.getTime(); const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); return diffDays >= 0 ? diffDays + 1 : 0; }
-  const daysRemaining = getDaysRemaining();
-  
-  const getPacingStatus = () => {
-      if (!currentCareerDetails) return { status: 'on-track', days: 0, message: '' } as const;
-      const startDate = new Date(currentCareerDetails.addedAt); startDate.setHours(12, 0, 0, 0);
-      const targetParts = currentCareerDetails.targetCompletionDate.split('-'); const targetDate = new Date(parseInt(targetParts[0]), parseInt(targetParts[1]) - 1, parseInt(targetParts[2]), 12, 0, 0);
-      const today = new Date(); today.setHours(12, 0, 0, 0);
-      const totalDurationMs = targetDate.getTime() - startDate.getTime(); const totalDays = Math.max(1, Math.round(totalDurationMs / (1000 * 60 * 60 * 24)));
-      const elapsedMs = today.getTime() - startDate.getTime(); const daysElapsed = Math.max(0, Math.round(elapsedMs / (1000 * 60 * 60 * 24)));
-      if (daysElapsed > totalDays) return { status: 'critical', days: daysElapsed - totalDays, message: 'Target date passed' } as const;
-      let totalItems = 0; let completedItems = 0; if (roadmap) { roadmap.forEach(p => p.items.forEach(i => { totalItems++; if (i.status === 'completed') completedItems++; })); }
-      if (totalItems === 0) return { status: 'on-track', days: 0, message: 'No tasks' } as const;
-      const itemsPerDay = totalItems / totalDays; const expectedItems = itemsPerDay * daysElapsed; const diffItems = completedItems - expectedItems; const diffDays = diffItems / itemsPerDay; const roundedDays = Math.round(Math.abs(diffDays));
-      if (diffDays >= 1) { const d = Math.floor(diffDays); if (d === 0) return { status: 'on-track', days: 0, message: 'On track' } as const; return { status: 'ahead', days: d, message: `${d} day${d > 1 ? 's' : ''} ahead` } as const; } else if (diffDays <= -1) { const d = Math.ceil(Math.abs(diffDays)); return { status: 'behind', days: d, message: `${d} day${d > 1 ? 's' : ''} behind` } as const; }
-      return { status: 'on-track', days: 0, message: 'On track' } as const;
-  };
-  const pacing = getPacingStatus();
 
   const renderContent = () => {
     switch (activeTab) {
@@ -508,6 +740,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <button onClick={() => setIsChatOpen(!isChatOpen)} className="fixed bottom-24 md:bottom-10 right-4 md:right-10 w-14 h-14 bg-indigo-600 hover:bg-indigo-500 rounded-full shadow-2xl shadow-indigo-500/40 flex items-center justify-center z-[60] transition-transform hover:scale-105 active:scale-95">{isChatOpen ? <X className="h-6 w-6 text-white" /> : <MessageSquare className="h-6 w-6 text-white" />}</button>
       <ChatWindow isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} careerTitle={career.title} history={chatHistory} onSend={handleSendMessage} isTyping={isChatTyping} />
       {showCelebration && <CelebrationModal onClose={() => setShowCelebration(false)} />}
+      {phaseAdaptationState && <PhaseAdaptationModal status={phaseAdaptationState.status} diff={phaseAdaptationState.diff} onOptionSelect={handlePhaseAdaptationOption} onClose={() => setPhaseAdaptationState(null)} />}
       {showPhaseCompletionModal && <PhaseCompletionModal onClose={() => setShowPhaseCompletionModal(false)} onUpdateDate={handleFinishQuicker} />}
       {showFeedbackModal && <FeedbackModal onClose={() => setShowFeedbackModal(false)} text={feedbackText} setText={setFeedbackText} />}
       {confirmAction && <ConfirmationModal action={confirmAction} onConfirm={confirmAction.type === 'reset_all' ? executeResetAll : executeDeleteAccount} onCancel={() => setConfirmAction(null)} />}
