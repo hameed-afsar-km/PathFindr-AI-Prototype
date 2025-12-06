@@ -270,7 +270,9 @@ export const generateRoadmap = async (
         
         const text = response.text;
         if (!text) throw new Error("No text returned");
-        return JSON.parse(text) as RoadmapPhase[];
+        const data = JSON.parse(text);
+        if (!Array.isArray(data)) throw new Error("Roadmap must be an array");
+        return data as RoadmapPhase[];
     } catch (e) {
         console.warn("Roadmap error (using fallback)", e);
         // Fallback
@@ -360,7 +362,10 @@ export const generateDailyQuiz = async (careerTitle: string): Promise<DailyQuizI
         
         const text = response.text;
         if (!text) return getFallbackDailyQuiz(careerTitle);
-        return JSON.parse(text);
+        const data = JSON.parse(text);
+        // Valid options
+        if (!data.options || !Array.isArray(data.options)) return getFallbackDailyQuiz(careerTitle);
+        return data;
     } catch (e) {
         return getFallbackDailyQuiz(careerTitle);
     }
@@ -378,7 +383,9 @@ export const generatePracticeTopics = async (careerTitle: string): Promise<strin
         });
         const text = response.text;
         if (!text) return ["Core Fundamentals", "Advanced Techniques", "Best Practices", "Tools & Ecosystem", "System Design"];
-        return JSON.parse(text);
+        const data = JSON.parse(text);
+        if (!Array.isArray(data)) return ["Core Fundamentals", "Advanced Techniques", "Best Practices", "Tools & Ecosystem", "System Design"];
+        return data;
     } catch (e) {
         return ["Core Fundamentals", "Advanced Techniques", "Best Practices", "Tools & Ecosystem", "System Design"];
     }
@@ -408,7 +415,9 @@ export const generatePracticeQuestions = async (careerTitle: string, topic?: str
         });
         const text = response.text;
         if (!text) return getFallbackPracticeQuestions(careerTitle);
-        return JSON.parse(text);
+        const data = JSON.parse(text);
+        if (!Array.isArray(data)) return getFallbackPracticeQuestions(careerTitle);
+        return data;
     } catch (e) {
         return getFallbackPracticeQuestions(careerTitle);
     }
@@ -465,7 +474,9 @@ export const generateCompanyInterviewQuestions = async (
         });
         const text = response.text;
         if (!text) return getFallbackInterviewQuestions(careerTitle);
-        return JSON.parse(text);
+        const data = JSON.parse(text);
+        if (!Array.isArray(data)) return getFallbackInterviewQuestions(careerTitle);
+        return data;
     } catch (e) {
         return getFallbackInterviewQuestions(careerTitle);
     }
@@ -475,9 +486,15 @@ export const generateSimulationScenario = async (careerTitle: string): Promise<S
     const prompt = `
         ${NOVA_PERSONA}
         Create a role-playing job simulation scenario for a ${careerTitle}.
-        Describe a realistic workplace situation (the 'scenario') and ask a decision-making question.
-        Provide 4 options and the correct index (NUMBER 0-3).
-        Output JSON.
+        Scenario: A realistic workplace situation (conflict, technical bug, ethical dilemma) requiring a decision.
+        Question: The specific decision the user must make.
+        Options: 4 plausible actions.
+        Correct Index: The index of the best option (0-3).
+        Explanation: 
+          - Outcome: Describe the positive result of the correct choice.
+          - Risk Analysis: Explain why the other options are suboptimal and what risks they carry compared to the correct choice.
+        
+        Output valid JSON conforming to the schema.
     `;
     
     try {
@@ -487,13 +504,32 @@ export const generateSimulationScenario = async (careerTitle: string): Promise<S
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
-            config: { responseMimeType: "application/json" }
+            config: { 
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        id: { type: Type.STRING },
+                        scenario: { type: Type.STRING },
+                        question: { type: Type.STRING },
+                        options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                        correctIndex: { type: Type.NUMBER },
+                        explanation: { type: Type.STRING }
+                    },
+                    required: ['id', 'scenario', 'question', 'options', 'correctIndex', 'explanation']
+                }
+            }
         });
         const text = response.text;
         if (!text) throw new Error("No text");
-        return JSON.parse(text);
+        const data = JSON.parse(text);
+        
+        if (!data.options || !Array.isArray(data.options)) throw new Error("Invalid options format");
+        
+        return data;
     } catch (e) {
-        // Fallback Scenario
+        console.error("Sim Gen Error", e);
+        // Fallback
         return {
             id: 'sim_fallback',
             scenario: `You are working as a ${careerTitle} and a critical deadline is approaching. A key feature is broken.`,
@@ -505,7 +541,7 @@ export const generateSimulationScenario = async (careerTitle: string): Promise<S
                 "Panic and quit"
             ],
             correctIndex: 1,
-            explanation: "Transparency and communication are key in professional environments."
+            explanation: "Outcome: Communicating risk allows stakeholders to make informed decisions and builds trust.\n\nRisk Analysis: Hiding bugs leads to production failures. Blaming others destroys team morale. Panicking solves nothing."
         };
     }
 };

@@ -3,7 +3,7 @@ import { UserProfile, CareerOption, RoadmapPhase, NewsItem, RoadmapItem, DailyQu
 import { Roadmap } from './Roadmap';
 import { fetchTechNews, generateRoadmap, calculateRemainingDays, generateDailyQuiz, generatePracticeTopics, generatePracticeQuestions, generateCompanyInterviewQuestions, generateSimulationScenario, generateChatResponse } from '../services/gemini';
 import { saveRoadmap, saveUser, getRoadmap, getCareerData, saveCareerData, setCurrentUser, getNewsCache, saveNewsCache, getDailyQuizCache, saveDailyQuizCache, deleteUser, getPracticeData, savePracticeData } from '../services/store';
-import { Home, Map, Briefcase, User, LogOut, TrendingUp, PlusCircle, ChevronDown, ChevronUp, Clock, Trophy, AlertCircle, Target, Trash2, RotateCcw, PartyPopper, ArrowRight, Zap, Calendar, ExternalLink, X, RefreshCw, MessageSquare, CheckCircle2, Pencil, BrainCircuit, GraduationCap, Flame, Star, Search, Link, Building2, PlayCircle, Eye, EyeOff, ShieldAlert, Palette, Settings, Mail, Lock, CalendarDays, AlertTriangle, Moon, Sun, Send, Cpu, Sparkles, Compass } from 'lucide-react';
+import { Home, Map, Briefcase, User, LogOut, TrendingUp, PlusCircle, ChevronDown, ChevronUp, Clock, Trophy, AlertCircle, Target, Trash2, RotateCcw, PartyPopper, ArrowRight, Zap, Calendar, ExternalLink, X, RefreshCw, MessageSquare, CheckCircle2, Pencil, BrainCircuit, GraduationCap, Flame, Star, Search, Link, Building2, PlayCircle, Eye, EyeOff, ShieldAlert, Palette, Settings, Mail, Lock, CalendarDays, AlertTriangle, Moon, Sun, Send, Cpu, Sparkles, Compass, LayoutDashboard, BookOpen } from 'lucide-react';
 
 interface DashboardProps {
   user: UserProfile;
@@ -27,7 +27,7 @@ const PracticeQuestionCard: React.FC<{ question: PracticeQuestion, index: number
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 transition-all hover:border-slate-700 w-full">
             <h4 className="text-lg font-bold text-white mb-6 flex items-start gap-3"><span className="bg-indigo-500/10 text-indigo-400 text-xs px-2 py-1 rounded pt-0.5 shrink-0 border border-indigo-500/20">Q{index + 1}</span>{question.question}</h4>
             <div className="grid gap-3">
-                {question.options.map((opt, idx) => {
+                {question.options?.map((opt, idx) => {
                     let btnClass = "w-full text-left p-4 rounded-xl border transition-all flex justify-between items-center ";
                     let icon = null;
                     if (isAnswered) {
@@ -38,7 +38,7 @@ const PracticeQuestionCard: React.FC<{ question: PracticeQuestion, index: number
                     return <button key={idx} onClick={() => handleSelect(idx)} disabled={isAnswered} className={btnClass}><span className="flex items-center gap-3"><span className={`w-6 h-6 rounded-full border flex items-center justify-center text-xs font-bold ${isAnswered && idx === correctIdx ? '!bg-emerald-500 !border-emerald-500 text-slate-950' : isAnswered && idx === selectedIdx ? '!bg-red-500 !border-red-500 text-white' : 'border-slate-600 text-slate-400'}`}>{['A','B','C','D'][idx]}</span>{opt}</span>{icon}</button>;
                 })}
             </div>
-            {isAnswered && (<div className={`mt-6 p-4 rounded-xl border animate-fade-in ${isUserCorrect ? 'bg-emerald-900/10 border-emerald-500/30' : 'bg-red-900/10 border-red-500/30'}`}><div className="flex items-center gap-2 mb-2">{isUserCorrect ? <span className="text-emerald-400 font-bold text-sm flex items-center gap-2"><CheckCircle2 className="h-4 w-4" /> Correct!</span> : <span className="text-red-400 font-bold text-sm flex items-center gap-2"><AlertCircle className="h-4 w-4" /> Incorrect</span>}</div>{!isUserCorrect && <div className="mb-2 text-sm"><span className="font-semibold text-slate-400 text-xs uppercase tracking-wider block">Correct Answer</span><p className="text-emerald-300 font-medium">{question.options[correctIdx]}</p></div>}<p className="text-slate-300 text-sm leading-relaxed pt-2 border-t border-slate-700/50 mt-2"><span className="font-semibold text-slate-400 text-xs uppercase tracking-wider block mb-1">Explanation</span>{question.explanation}</p></div>)}
+            {isAnswered && (<div className={`mt-6 p-4 rounded-xl border animate-fade-in ${isUserCorrect ? 'bg-emerald-900/10 border-emerald-500/30' : 'bg-red-900/10 border-red-500/30'}`}><div className="flex items-center gap-2 mb-2">{isUserCorrect ? <span className="text-emerald-400 font-bold text-sm flex items-center gap-2"><CheckCircle2 className="h-4 w-4" /> Correct!</span> : <span className="text-red-400 font-bold text-sm flex items-center gap-2"><AlertCircle className="h-4 w-4" /> Incorrect</span>}</div>{!isUserCorrect && <div className="mb-2 text-sm"><span className="font-semibold text-slate-400 text-xs uppercase tracking-wider block">Correct Answer</span><p className="text-emerald-300 font-medium">{question.options?.[correctIdx]}</p></div>}<p className="text-slate-300 text-sm leading-relaxed pt-2 border-t border-slate-700/50 mt-2"><span className="font-semibold text-slate-400 text-xs uppercase tracking-wider block mb-1">Explanation</span>{question.explanation}</p></div>)}
         </div>
     );
 };
@@ -269,7 +269,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
 
   const handleSimulationSearch = async () => { setIsPracticeLoading(true); const sim = await generateSimulationScenario(career.title); setSimulationScenario(sim); setSimAnswer(null); setIsPracticeLoading(false); }
-  const handleSimAnswer = (index: number) => { if (!simulationScenario || simAnswer !== null) return; setSimAnswer(index); if (index === simulationScenario.correctIndex) { const updatedUser = { ...user, xp: (user.xp || 0) + 10 }; setUser(updatedUser); saveUser(updatedUser); showToastMsg("Sim Success! +10 XP"); } };
+  const handleSimAnswer = (index: number) => { 
+      if (!simulationScenario || simAnswer !== null) return; 
+      setSimAnswer(index); 
+      // Safe conversion for correctIndex
+      if (index === Number(simulationScenario.correctIndex)) { 
+          const updatedUser = { ...user, xp: (user.xp || 0) + 10 }; 
+          setUser(updatedUser); 
+          saveUser(updatedUser); 
+          showToastMsg("Sim Success! +10 XP"); 
+      } 
+  };
   const toggleAnswerReveal = (id: string) => { const next = new Set(visibleAnswers); if (next.has(id)) next.delete(id); else next.add(id); setVisibleAnswers(next); };
   const handleSubscribe = (plan: 'monthly' | 'yearly') => { const updatedUser = { ...user, subscriptionStatus: plan }; setUser(updatedUser); saveUser(updatedUser); };
   
@@ -528,14 +538,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                      {quizState === 'already_done' && <div className="text-center py-8"><div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4"><CheckCircle2 className="h-8 w-8 text-emerald-400" /></div><h3 className="text-xl font-bold text-white mb-2">You're all set for today!</h3><p className="text-slate-400 mb-6">Come back tomorrow.</p><div className="inline-block bg-slate-800 px-4 py-2 rounded-xl text-sm text-slate-300">Next quiz available in <CountdownTimer /></div></div>}
                      {quizState === 'completed' && dailyQuiz && (
                          <div className="text-center py-6 animate-fade-in">
-                             {isQuizCorrect ? <><div className="text-4xl mb-4">🎉</div><h3 className="text-2xl font-bold text-white mb-2">Correct! +10 XP</h3><p className="text-slate-300 mb-6">{dailyQuiz.explanation}</p></> : <><div className="text-4xl mb-4">💪</div><h3 className="text-2xl font-bold text-white mb-2">Not quite.</h3><p className="text-slate-300 mb-6">Streak reset to 0.</p><div className="w-full bg-slate-800/50 p-4 rounded-xl text-left border border-slate-700"><div className="text-xs text-slate-500 uppercase font-bold mb-1">Correct Answer</div><div className="text-emerald-400 font-bold mb-2">{dailyQuiz.options[dailyQuiz.correctIndex]}</div><div className="text-sm text-slate-300">{dailyQuiz.explanation}</div></div></>}
+                             {isQuizCorrect ? <><div className="text-4xl mb-4">🎉</div><h3 className="text-2xl font-bold text-white mb-2">Correct! +10 XP</h3><p className="text-slate-300 mb-6">{dailyQuiz.explanation}</p></> : <><div className="text-4xl mb-4">💪</div><h3 className="text-2xl font-bold text-white mb-2">Not quite.</h3><p className="text-slate-300 mb-6">Streak reset to 0.</p><div className="w-full bg-slate-800/50 p-4 rounded-xl text-left border border-slate-700"><div className="text-xs text-slate-500 uppercase font-bold mb-1">Correct Answer</div><div className="text-emerald-400 font-bold mb-2">{dailyQuiz.options?.[dailyQuiz.correctIndex]}</div><div className="text-sm text-slate-300">{dailyQuiz.explanation}</div></div></>}
                          </div>
                      )}
                      {quizState === 'active' && dailyQuiz && (
                          <div className="animate-fade-in">
                              <h3 className="text-lg md:text-xl font-bold text-white mb-6 leading-relaxed">{dailyQuiz.question}</h3>
                              <div className="grid grid-cols-1 gap-3">
-                                 {dailyQuiz.options.map((opt, i) => <button key={i} onClick={() => handleQuizAnswer(i)} disabled={selectedQuizOption !== null} className={`w-full text-left p-4 rounded-xl border transition-all ${selectedQuizOption !== null ? i === dailyQuiz.correctIndex ? 'bg-emerald-500/20 border-emerald-500 text-white' : i === selectedQuizOption ? 'bg-red-500/20 border-red-500 text-white' : 'bg-slate-900 border-slate-800 text-slate-500 opacity-50' : 'bg-slate-900/50 border-slate-700 text-slate-200 hover:bg-indigo-900/30 hover:border-indigo-500 hover:text-white'}`}><div className="flex items-center gap-3"><div className={`w-6 h-6 rounded-full border flex items-center justify-center text-xs font-bold ${selectedQuizOption !== null && i === dailyQuiz.correctIndex ? 'bg-emerald-500 border-emerald-500 text-slate-950' : 'border-slate-600 text-slate-400'}`}>{['A','B','C','D'][i]}</div>{opt}</div></button>)}
+                                 {dailyQuiz.options?.map((opt, i) => <button key={i} onClick={() => handleQuizAnswer(i)} disabled={selectedQuizOption !== null} className={`w-full text-left p-4 rounded-xl border transition-all ${selectedQuizOption !== null ? i === dailyQuiz.correctIndex ? 'bg-emerald-500/20 border-emerald-500 text-white' : i === selectedQuizOption ? 'bg-red-500/20 border-red-500 text-white' : 'bg-slate-900 border-slate-800 text-slate-500 opacity-50' : 'bg-slate-900/50 border-slate-700 text-slate-200 hover:bg-indigo-900/30 hover:border-indigo-500 hover:text-white'}`}><div className="flex items-center gap-3"><div className={`w-6 h-6 rounded-full border flex items-center justify-center text-xs font-bold ${selectedQuizOption !== null && i === dailyQuiz.correctIndex ? 'bg-emerald-500 border-emerald-500 text-slate-950' : 'border-slate-600 text-slate-400'}`}>{['A','B','C','D'][i]}</div>{opt}</div></button>)}
                              </div>
                          </div>
                      )}
@@ -589,7 +599,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                   <div className="animate-fade-in space-y-8">
                                       <div><h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Suggested Topics</h3><div className="flex flex-wrap gap-2"><button onClick={() => setSelectedTopic(null)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${!selectedTopic ? 'bg-indigo-500 text-white border-indigo-500' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600'}`}>General</button>{practiceTopics.map(t => <button key={t} onClick={() => setSelectedTopic(t)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${selectedTopic === t ? 'bg-indigo-500 text-white border-indigo-500' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600'}`}>{t}</button>)}</div></div>
                                       <div className="space-y-6">
-                                          {practiceQuestions.length > 0 ? practiceQuestions.map((q, qIdx) => (
+                                          {practiceQuestions?.length > 0 ? practiceQuestions.map((q, qIdx) => (
                                               <PracticeQuestionCard key={q.id || qIdx} question={q} index={qIdx} />
                                           )) : <div className="text-center py-10 text-slate-500">No questions available for this filter.</div>}
                                       </div>
@@ -609,7 +619,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                           </div>
                                       )}
                                       <div className="grid md:grid-cols-2 gap-4">
-                                          {interviewQuestions.length > 0 ? interviewQuestions.map((q, i) => (
+                                          {interviewQuestions?.length > 0 ? interviewQuestions.map((q, i) => (
                                               <div key={q.id || i} className="bg-slate-950 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between hover:border-indigo-500/50 transition-colors group">
                                                   <div>
                                                       <div className="flex justify-between items-start mb-4"><div className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${q.company?.includes('Aptitude') ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : q.company?.includes('AI Challenge') ? 'bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20' : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'}`}>{q.company || 'General'}</div></div>
@@ -642,18 +652,65 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                               <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 mb-8 italic text-slate-300 leading-relaxed">"{simulationScenario.scenario}"</div>
                                               <h3 className="text-lg font-bold text-white mb-6">{simulationScenario.question}</h3>
                                               <div className="space-y-3">
-                                                  {simulationScenario.options.map((opt, idx) => {
+                                                  {simulationScenario.options?.map((opt, idx) => {
                                                       const isSelected = simAnswer === idx;
-                                                      const isCorrect = idx === simulationScenario.correctIndex;
+                                                      const isCorrect = idx === Number(simulationScenario.correctIndex);
                                                       const showResult = simAnswer !== null;
+                                                      
+                                                      let btnClass = "w-full text-left p-5 rounded-xl border transition-all relative overflow-hidden flex items-center justify-between ";
+                                                      
+                                                      if (showResult) {
+                                                          if (isCorrect) {
+                                                              btnClass += "bg-emerald-500/20 border-emerald-500 text-white ring-1 ring-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.2)]";
+                                                          } else if (isSelected) {
+                                                              btnClass += "bg-red-500/20 border-red-500 text-white ring-1 ring-red-500/50";
+                                                          } else {
+                                                              btnClass += "bg-slate-900 border-slate-800 text-slate-500 opacity-40 grayscale";
+                                                          }
+                                                      } else {
+                                                          btnClass += "bg-slate-900 border-slate-700 text-slate-200 hover:border-indigo-500 hover:bg-slate-800 hover:shadow-lg hover:shadow-indigo-500/10";
+                                                      }
+
                                                       return (
-                                                          <button key={idx} onClick={() => handleSimAnswer(idx)} disabled={simAnswer !== null} className={`w-full text-left p-5 rounded-xl border transition-all relative overflow-hidden ${showResult ? isCorrect ? 'bg-emerald-500/20 border-emerald-500 text-white' : isSelected ? 'bg-red-500/20 border-red-500 text-white opacity-50' : 'bg-slate-900 border-slate-800 text-slate-500 opacity-50' : 'bg-slate-900 border-slate-700 text-slate-200 hover:border-indigo-500 hover:bg-slate-800'}`}>
-                                                              {opt}{showResult && isCorrect && <CheckCircle2 className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-400" />}
+                                                          <button key={idx} onClick={() => handleSimAnswer(idx)} disabled={simAnswer !== null} className={btnClass}>
+                                                              <span className="font-medium pr-8">{opt}</span>
+                                                              {showResult && isCorrect && <CheckCircle2 className="h-6 w-6 text-emerald-400 shrink-0" />}
+                                                              {showResult && isSelected && !isCorrect && <AlertTriangle className="h-6 w-6 text-red-400 shrink-0" />}
                                                           </button>
                                                       );
                                                   })}
                                               </div>
-                                              {simAnswer !== null && <div className="mt-8 p-6 bg-slate-900 rounded-2xl border border-indigo-500/20 animate-fade-in"><h4 className="text-indigo-400 font-bold mb-2 flex items-center gap-2"><Zap className="h-4 w-4" /> Nova Analysis</h4><p className="text-slate-300">{simulationScenario.explanation}</p><button onClick={handleSimulationSearch} className="mt-4 text-sm text-slate-400 hover:text-white underline decoration-slate-600 hover:decoration-white underline-offset-4">Next Scenario</button></div>}
+                                              
+                                              {simAnswer !== null && (
+                                                  <div className={`mt-8 p-6 rounded-2xl border animate-fade-in ${simAnswer === Number(simulationScenario.correctIndex) ? 'bg-emerald-900/10 border-emerald-500/20' : 'bg-red-900/10 border-red-500/20'}`}>
+                                                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 border-b border-white/10 pb-4">
+                                                          <div className="flex items-center gap-3">
+                                                              {simAnswer === Number(simulationScenario.correctIndex) ? (
+                                                                  <>
+                                                                    <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400"><CheckCircle2 className="h-6 w-6" /></div>
+                                                                    <div>
+                                                                        <h4 className="text-emerald-400 font-bold text-lg">Excellent Decision</h4>
+                                                                        <p className="text-slate-400 text-xs">+10 XP Awarded</p>
+                                                                    </div>
+                                                                  </>
+                                                              ) : (
+                                                                  <>
+                                                                    <div className="p-2 bg-red-500/20 rounded-lg text-red-400"><AlertTriangle className="h-6 w-6" /></div>
+                                                                    <div>
+                                                                        <h4 className="text-red-400 font-bold text-lg">Not Quite Optimal</h4>
+                                                                        <p className="text-slate-400 text-xs">Review the analysis below</p>
+                                                                    </div>
+                                                                  </>
+                                                              )}
+                                                          </div>
+                                                          <button onClick={handleSimulationSearch} className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-all border border-slate-700 flex items-center gap-2 text-sm whitespace-nowrap shadow-lg">Next Scenario <ArrowRight className="h-4 w-4" /></button>
+                                                      </div>
+                                                      <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800">
+                                                          <h4 className="text-indigo-400 text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-2"><Zap className="h-3 w-3" /> Consequence Analysis</h4>
+                                                          <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-line">{simulationScenario.explanation}</p>
+                                                      </div>
+                                                  </div>
+                                              )}
                                           </div>
                                       </div>
                                     )}
