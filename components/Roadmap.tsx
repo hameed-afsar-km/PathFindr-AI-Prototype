@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { RoadmapPhase, UserProfile, RoadmapItem } from '../types';
 import { Subscription } from './Subscription';
-import { CheckCircle2, Circle, ExternalLink, RefreshCw, Briefcase, Award, Code, Zap, Clock, ChevronDown, ChevronUp, Star, AlertTriangle, CheckCircle, RotateCcw, Lock, Filter, Search, Info, Check, Pencil, Compass } from 'lucide-react';
+import { CheckCircle2, Circle, ExternalLink, RefreshCw, Briefcase, Award, Code, Zap, Clock, ChevronDown, ChevronUp, Star, AlertTriangle, CheckCircle, RotateCcw, Lock, Filter, Search, Info, Check, Pencil, Compass, Youtube, PlayCircle } from 'lucide-react';
 
 interface PacingStatus {
     status: 'ahead' | 'behind' | 'on-track' | 'critical';
@@ -642,16 +642,65 @@ export const Roadmap: React.FC<RoadmapProps> = ({
                                             {/* Expandable Details Panel */}
                                             {showDetails && (
                                                 <div className="border-t border-slate-800 bg-slate-950/50 p-4 animate-fade-in">
-                                                     {item.explanation ? (
-                                                        <div className="space-y-4">
+                                                     <div className="space-y-4">
+                                                        {item.explanation && (
                                                             <div className="text-sm text-slate-300 leading-relaxed border-l-2 border-indigo-500 pl-4">
                                                                 <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">Concept Explained</h4>
                                                                 <div className="whitespace-pre-line">{item.explanation}</div>
                                                             </div>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="text-sm text-red-400">No details available.</div>
-                                                    )}
+                                                        )}
+                                                        
+                                                        {/* Suggested Resources (YouTube) */}
+                                                        {item.suggestedResources && item.suggestedResources.length > 0 && (
+                                                            <div>
+                                                                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                                                    <Youtube className="h-3 w-3 text-red-500" /> Recommended Tutorials
+                                                                </h4>
+                                                                <div className="grid gap-2 sm:grid-cols-2">
+                                                                    {item.suggestedResources.map((res, idx) => (
+                                                                        <a 
+                                                                            key={idx}
+                                                                            href={res.url}
+                                                                            target="_blank"
+                                                                            rel="noreferrer"
+                                                                            className="flex items-center gap-3 p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-red-500/30 hover:bg-slate-800 transition-all group"
+                                                                        >
+                                                                            <div className="w-8 h-8 rounded-full bg-red-900/10 flex items-center justify-center shrink-0 group-hover:bg-red-600 transition-colors">
+                                                                                <PlayCircle className="h-4 w-4 text-red-500 group-hover:text-white" />
+                                                                            </div>
+                                                                            <span className="text-xs text-slate-300 group-hover:text-white truncate flex-1">{res.title}</span>
+                                                                            <ExternalLink className="h-3 w-3 text-slate-600 group-hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all" />
+                                                                        </a>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Internship/Certificate Link (if not already shown prominently or just to reinforce) */}
+                                                        {item.link && (item.type === 'internship' || item.type === 'certificate') && (
+                                                            <div>
+                                                                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                                                    <Briefcase className="h-3 w-3 text-emerald-500" /> Opportunity Link
+                                                                </h4>
+                                                                <a 
+                                                                    href={item.link}
+                                                                    target="_blank"
+                                                                    rel="noreferrer"
+                                                                    className="flex items-center gap-3 p-3 rounded-lg bg-emerald-900/10 border border-emerald-500/20 hover:bg-emerald-900/20 hover:border-emerald-500/40 transition-all group"
+                                                                >
+                                                                    <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+                                                                        <ExternalLink className="h-4 w-4 text-emerald-400" />
+                                                                    </div>
+                                                                    <div className="flex-1">
+                                                                        <div className="text-sm font-bold text-emerald-400 group-hover:text-emerald-300">
+                                                                            {item.type === 'internship' ? 'Apply for Internship' : 'View Certification'}
+                                                                        </div>
+                                                                        <div className="text-xs text-slate-400 truncate">{item.link}</div>
+                                                                    </div>
+                                                                </a>
+                                                            </div>
+                                                        )}
+                                                     </div>
                                                 </div>
                                             )}
                                         </div>

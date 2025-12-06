@@ -241,6 +241,10 @@ export const generateRoadmap = async (
       7. CRITICAL: DEPENDENCIES. Tasks should logical depend on previous ones. Add a 'dependencies' array to items containing the IDs of previous 1-2 critical tasks that MUST be completed before this one. 
          - The first item of Phase 1 has no dependencies.
          - Later items should depend on key earlier items to create a learning chain.
+      8. RESOURCES & LINKS (CRITICAL):
+         - 'suggestedResources': For 'skill' and 'project' types, provide an array of exactly 2 objects: { title: "YouTube: [Topic] Tutorial", url: "https://www.youtube.com/results?search_query=[Topic]+tutorial" }.
+         - 'link': For 'certificate' types, provide a URL to a relevant provider (Coursera, Udemy, etc.) or "https://www.google.com/search?q=[CertificateName]".
+         - 'link': For 'internship' types, provide a URL to "https://www.linkedin.com/jobs/search/?keywords=[Role]+Intern" or similar.
       
       Output JSON format: Array of RoadmapPhase objects.
       RoadmapPhase: { phaseName: string, items: RoadmapItem[] }
@@ -254,7 +258,9 @@ export const generateRoadmap = async (
         importance: "high"|"medium"|"low",
         explanation: string (plain text),
         isAIAdaptation: boolean,
-        dependencies: string[] (IDs of prerequisite tasks)
+        dependencies: string[] (IDs of prerequisite tasks),
+        link: string (optional, for certs/internships),
+        suggestedResources: { title: string, url: string }[] (optional, for skills/projects)
       }
     `;
 
@@ -281,7 +287,7 @@ export const generateRoadmap = async (
             {
                 phaseName: `Phase ${startPhase}: Foundations (Offline Mode)`,
                 items: [
-                    { id: `f${startPhase}_1`, title: `Core Concepts of ${careerTitle}`, description: "Understanding the basics and ecosystem.", type: 'skill', duration: '1 day', status: 'pending', importance: 'high', explanation: "Essential starting point. Checklist: History, Key Terms, Tools.", dependencies: [] },
+                    { id: `f${startPhase}_1`, title: `Core Concepts of ${careerTitle}`, description: "Understanding the basics and ecosystem.", type: 'skill', duration: '1 day', status: 'pending', importance: 'high', explanation: "Essential starting point. Checklist: History, Key Terms, Tools.", dependencies: [], suggestedResources: [{title: `${careerTitle} 101`, url: `https://www.youtube.com/results?search_query=${careerTitle}+tutorial`}] },
                     { id: `f${startPhase}_2`, title: "Environment Setup", description: "Installing necessary software and tools.", type: 'skill', duration: '1 day', status: 'pending', importance: 'high', explanation: "Preparing your workspace. Checklist: IDE, SDKs, CLIs.", dependencies: [`f${startPhase}_1`] },
                     { id: `f${startPhase}_3`, title: "First Practical Exercise", description: "Hands-on simple project.", type: 'project', duration: '1 day', status: 'pending', importance: 'medium', explanation: "Apply what you learned. Checklist: Hello World, Basic Script.", dependencies: [`f${startPhase}_2`] }
                 ]
@@ -291,7 +297,7 @@ export const generateRoadmap = async (
                 items: [
                     { id: `d${startPhase}_1`, title: "Advanced Theory", description: "Moving beyond basics.", type: 'skill', duration: '1 day', status: 'pending', importance: 'high', explanation: "Deepening knowledge. Checklist: Algorithms, Patterns.", dependencies: [`f${startPhase}_3`] },
                     { id: `d${startPhase}_2`, title: "Mini Project", description: "Building something functional.", type: 'project', duration: '1 day', status: 'pending', importance: 'high', explanation: "Portfolio piece. Checklist: CRUD App, Analysis Report.", dependencies: [`d${startPhase}_1`] },
-                    { id: `d${startPhase}_3`, title: "Certification Prep", description: "Reviewing standards.", type: 'certificate', duration: '1 day', status: 'pending', importance: 'medium', explanation: "Validation of skills. Checklist: Exam Guide, Mock Test.", dependencies: [`d${startPhase}_2`] }
+                    { id: `d${startPhase}_3`, title: "Certification Prep", description: "Reviewing standards.", type: 'certificate', duration: '1 day', status: 'pending', importance: 'medium', explanation: "Validation of skills. Checklist: Exam Guide, Mock Test.", dependencies: [`d${startPhase}_2`], link: `https://www.google.com/search?q=${careerTitle}+certification` }
                 ]
             }
         ];
