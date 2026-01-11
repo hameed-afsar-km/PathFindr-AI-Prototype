@@ -1,12 +1,11 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { CareerOption, RoadmapPhase, NewsItem, RoadmapItem, SkillQuestion, DailyQuizItem, InterviewQuestion, PracticeQuestion, SimulationScenario, ChatMessage } from '../types';
 
-// Helper to strip markdown formatting from JSON responses
 const cleanJsonString = (str: string): string => {
   return str.replace(/```json\n?|```/g, "").trim();
 };
 
-// Helper to wrap promises with a timeout
 const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, fallbackValue: T): Promise<T> => {
   return Promise.race([
     promise,
@@ -150,7 +149,7 @@ export const generateRoadmap = async (
       
       RULES:
       1. Break into logical "Phases".
-      2. EACH Item MUST represent exactly 1 day.
+      2. EACH Item MUST represent exactly 1 day of work.
       3. Total items MUST match ~${totalDays}.
       4. Crucial: Each item MUST have a detailed "explanation" property.
       5. Include "suggestedResources" (array of {title, url}) for each item.
@@ -169,11 +168,13 @@ export const generateRoadmap = async (
       const data = JSON.parse(cleanJsonString(response.text || '[]'));
       if (!Array.isArray(data)) return [];
 
-      let taskId = 1;
-      return data.map((phase: any) => ({
+      let taskIdCounter = 1;
+      const generationId = Date.now().toString(36); // Unique ID for this generation run
+
+      return data.map((phase: any, pIdx: number) => ({
         ...phase,
-        items: (phase.items || []).map((item: any) => {
-          // Robustly ensure suggestedResources is always an array
+        items: (phase.items || []).map((item: any, iIdx: number) => {
+          // Normalize suggestedResources to always be an array
           let resources = [];
           if (Array.isArray(item.suggestedResources)) {
             resources = item.suggestedResources;
@@ -183,8 +184,9 @@ export const generateRoadmap = async (
 
           return {
             ...item,
-            id: `id-${careerTitle.toLowerCase().replace(/\s+/g, '-')}-${taskId++}`,
-            status: item.status || 'pending',
+            // Create a truly unique and stable ID to prevent cross-task pollution
+            id: `task-${generationId}-${pIdx}-${taskIdCounter++}`,
+            status: 'pending',
             duration: '1 day',
             suggestedResources: resources
           };
