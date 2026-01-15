@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { RoadmapPhase, UserProfile, RoadmapItem } from '../types';
 import { Subscription } from './Subscription';
-import { CheckCircle2, Circle, ExternalLink, RefreshCw, Briefcase, Award, Code, Zap, Clock, ChevronDown, ChevronUp, Star, AlertTriangle, CheckCircle, RotateCcw, Lock, Filter, Search, Info, Check, Pencil, Compass, Youtube, PlayCircle } from 'lucide-react';
+import { CheckCircle2, Circle, ExternalLink, RefreshCw, Briefcase, Award, Code, Zap, Clock, ChevronDown, ChevronUp, Star, AlertTriangle, CheckCircle, RotateCcw, Lock, Filter, Search, Info, Check, Pencil, Compass, Youtube, PlayCircle, TrendingUp, TrendingDown, Target as TargetIcon, Boxes, FileBadge, GraduationCap } from 'lucide-react';
 
 interface PacingStatus {
     status: 'ahead' | 'behind' | 'on-track' | 'critical';
@@ -51,21 +51,10 @@ export const Roadmap: React.FC<RoadmapProps> = ({
       return roadmap.flatMap(phase => phase.items || []);
   }, [roadmap]);
 
-  const parseDurationInDays = (durationStr: string): number => {
-    const str = durationStr.toLowerCase();
-    const num = parseInt(str) || 1;
-    if (str.includes('week')) return num * 7;
-    if (str.includes('month')) return num * 30;
-    return num;
-  };
-
-  // Pre-calculate cumulative days for each item
   const itemStartDays = useMemo(() => {
-    let currentDay = 1;
     const map: Record<string, number> = {};
-    flatRoadmapItems.forEach(item => {
-        map[item.id] = currentDay;
-        currentDay += parseDurationInDays(item.duration);
+    flatRoadmapItems.forEach((item, idx) => {
+        map[item.id] = idx + 1;
     });
     return map;
   }, [flatRoadmapItems]);
@@ -165,6 +154,15 @@ export const Roadmap: React.FC<RoadmapProps> = ({
       return matchesCategory() && matchesSearch();
   };
 
+  const getItemIcon = (type: string) => {
+      switch(type) {
+          case 'project': return <Boxes className="h-3.5 w-3.5" />;
+          case 'certificate': return <FileBadge className="h-3.5 w-3.5" />;
+          case 'internship': return <Briefcase className="h-3.5 w-3.5" />;
+          default: return <GraduationCap className="h-3.5 w-3.5" />;
+      }
+  };
+
   if (isLoading || !roadmap) return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6 animate-fade-in w-full">
            <Compass className="h-12 w-12 text-indigo-400 animate-spin" />
@@ -185,7 +183,7 @@ export const Roadmap: React.FC<RoadmapProps> = ({
                 <div className="mx-auto w-16 h-16 bg-indigo-500/20 rounded-2xl flex items-center justify-center mb-4 text-indigo-400">
                     <CheckCircle2 className="h-8 w-8" />
                 </div>
-                <h3 className="text-lg font-bold text-white">Complete Task?</h3>
+                <h3 className="text-lg font-bold text-white">Complete Milestone?</h3>
                 <p className="text-slate-400 text-sm mt-1">Ready to finish "{itemToConfirm.title}"?</p>
                 <div className="flex gap-3 mt-6">
                     <button onClick={() => setItemToConfirm(null)} className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-sm">Cancel</button>
@@ -212,41 +210,60 @@ export const Roadmap: React.FC<RoadmapProps> = ({
       )}
 
       <div className={`p-4 md:p-6 space-y-6 ${!isPaid ? 'blur-sm select-none h-[80vh] overflow-hidden' : ''}`}>
-        <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-800">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-800 shadow-xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
+            
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 relative z-10">
                 <div>
-                    <h2 className="text-2xl font-bold text-white mb-1">{currentCareer?.title || "Your Pathway"}</h2>
-                    <div className="flex items-center gap-3 text-xs text-slate-400">
-                        <span className={`px-2 py-0.5 rounded-full font-bold border ${pacing.status === 'ahead' ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' : pacing.status === 'behind' ? 'bg-red-500/10 border-red-500 text-red-400' : 'bg-indigo-500/10 border-indigo-500 text-indigo-400'}`}>{pacing.message}</span>
-                        <span className="w-1 h-1 bg-slate-700 rounded-full"></span>
-                        <span>{daysRemaining} Days Remaining</span>
+                    <h2 className="text-3xl font-black text-white mb-2 tracking-tight">{currentCareer?.title || "Professional Path"}</h2>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-black uppercase tracking-wider ${
+                            pacing.status === 'ahead' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400 shadow-lg shadow-emerald-500/10' : 
+                            pacing.status === 'behind' ? 'bg-red-500/10 border-red-500/50 text-red-400 shadow-lg shadow-red-500/10' : 
+                            'bg-indigo-500/10 border-indigo-500/50 text-indigo-400'
+                        }`}>
+                            {pacing.status === 'ahead' ? <TrendingUp className="h-4 w-4" /> : pacing.status === 'behind' ? <TrendingDown className="h-4 w-4" /> : <TargetIcon className="h-4 w-4" />}
+                            {pacing.message}
+                        </div>
+                        <div className="h-4 w-px bg-slate-800"></div>
+                        <span className="text-sm font-semibold text-slate-400">{daysRemaining} Daily Tasks Left</span>
                     </div>
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto">
-                    <div className="relative flex-1 md:w-64">
-                        <Search className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
-                        <input type="text" placeholder="Search tasks..." className="w-full pl-9 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:border-indigo-500 outline-none text-sm" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                    <div className="relative flex-1 md:w-64 group">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
+                        <input type="text" placeholder="Search roadmap..." className="w-full pl-9 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:border-indigo-500 outline-none text-sm transition-all" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                     </div>
-                    <button onClick={handleResetRequest} className="p-2.5 bg-slate-900 hover:bg-red-900/20 text-slate-500 hover:text-red-400 rounded-xl border border-slate-800 transition-colors"><RotateCcw className="h-4 w-4" /></button>
+                    <button onClick={handleResetRequest} className="p-2.5 bg-slate-900 hover:bg-red-900/20 text-slate-500 hover:text-red-400 rounded-xl border border-slate-800 transition-all active:scale-95" title="Reset Roadmap">
+                        <RotateCcw className="h-5 w-5" />
+                    </button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800 flex flex-col justify-center text-center">
-                    <div className="text-xl font-bold text-white">{daysRemaining}</div>
-                    <div className="text-[10px] uppercase text-slate-500 font-bold">Pending Days</div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 relative z-10">
+                <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/50 flex flex-col justify-center text-center backdrop-blur-sm">
+                    <div className="text-2xl font-black text-white">{daysRemaining}</div>
+                    <div className="text-[10px] uppercase text-slate-500 font-black tracking-widest mt-1">Pending</div>
                 </div>
-                <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800 flex flex-col justify-center px-4">
-                     <div className="flex justify-between items-end mb-1"><div className="text-[10px] uppercase text-slate-500 font-bold">Progress</div><div className="text-xs font-bold text-emerald-400">{completionPercentage}%</div></div>
-                     <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${completionPercentage}%` }}></div></div>
+                <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/50 flex flex-col justify-center px-5 backdrop-blur-sm">
+                     <div className="flex justify-between items-end mb-2">
+                        <div className="text-[10px] uppercase text-slate-500 font-black tracking-widest">Mastery</div>
+                        <div className="text-xs font-black text-emerald-400">{completionPercentage}%</div>
+                     </div>
+                     <div className="h-2 bg-slate-900 rounded-full overflow-hidden border border-white/5">
+                        <div className="h-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] transition-all duration-1000 ease-out" style={{ width: `${completionPercentage}%` }}></div>
+                     </div>
                 </div>
-                <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800 text-center flex flex-col justify-center">
-                     <div className="text-[10px] text-slate-500 uppercase font-bold">Start</div>
-                     <div className="text-xs font-bold text-slate-300">{getStartDateDisplay()}</div>
+                <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/50 text-center flex flex-col justify-center backdrop-blur-sm">
+                     <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Started</div>
+                     <div className="text-sm font-bold text-slate-200">{getStartDateDisplay()}</div>
                 </div>
-                <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800 flex items-center justify-between px-4 cursor-pointer hover:border-indigo-500/50 transition-colors" onClick={onEditTargetDate}>
-                    <div className="text-left"><div className="text-[10px] text-slate-500 uppercase font-bold">Target</div><div className="text-xs font-bold text-slate-300">{getActiveCareerDate()}</div></div>
-                    <Pencil className="h-3 w-3 text-slate-600" />
+                <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/50 flex items-center justify-between px-5 cursor-pointer hover:border-indigo-500/50 transition-all hover:bg-slate-900 backdrop-blur-sm group" onClick={onEditTargetDate}>
+                    <div className="text-left">
+                        <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">End Goal</div>
+                        <div className="text-sm font-bold text-slate-200 group-hover:text-white transition-colors">{getActiveCareerDate()}</div>
+                    </div>
+                    <Pencil className="h-4 w-4 text-slate-600 group-hover:text-indigo-400 transition-colors" />
                 </div>
             </div>
         </div>
@@ -263,63 +280,100 @@ export const Roadmap: React.FC<RoadmapProps> = ({
                 if (visibleItems.length === 0 && (activeCategory !== 'all' || searchQuery !== '')) return null;
 
                 return (
-                    <div key={pIndex} className={`bg-slate-900 border transition-all rounded-2xl overflow-hidden ${isExpanded ? 'border-indigo-500/50' : 'border-slate-800'}`}>
-                        <div className="flex items-center justify-between p-4 cursor-pointer" onClick={() => togglePhase(pIndex)}>
-                             <div className="flex items-center gap-4">
-                                <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 text-xs font-bold ${isPhaseDone ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
-                                    {isPhaseDone ? <CheckCircle2 className="h-4 w-4" /> : pIndex + 1}
+                    <div key={pIndex} className={`bg-slate-900 border transition-all rounded-3xl overflow-hidden ${isExpanded ? 'border-indigo-500/40 shadow-2xl shadow-indigo-900/10' : 'border-slate-800'}`}>
+                        <div className="flex items-center justify-between p-5 cursor-pointer hover:bg-slate-800/30 transition-colors" onClick={() => togglePhase(pIndex)}>
+                             <div className="flex items-center gap-5">
+                                <div className={`flex items-center justify-center w-10 h-10 rounded-2xl border-2 text-sm font-black transition-all ${isPhaseDone ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400 shadow-lg shadow-emerald-500/10' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
+                                    {isPhaseDone ? <CheckCircle2 className="h-5 w-5" /> : pIndex + 1}
                                 </div>
                                 <div>
-                                    <h3 className={`font-bold text-sm md:text-base ${isPhaseDone ? 'text-emerald-400' : 'text-slate-200'}`}>{phase.phaseName}</h3>
-                                    <div className="text-[10px] text-slate-500 uppercase font-bold">{completedCount}/{totalCount} Tasks Complete</div>
+                                    <h3 className={`font-black text-base md:text-lg tracking-tight ${isPhaseDone ? 'text-emerald-400' : 'text-slate-100'}`}>{phase.phaseName}</h3>
+                                    <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-0.5">{completedCount} of {totalCount} goals met</div>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
-                                {isExpanded ? <ChevronUp className="h-4 w-4 text-slate-600" /> : <ChevronDown className="h-4 w-4 text-slate-600" />}
+                                {isExpanded ? <ChevronUp className="h-5 w-5 text-slate-600" /> : <ChevronDown className="h-5 w-5 text-slate-600" />}
                             </div>
                         </div>
 
                         {isExpanded && (
-                            <div className="border-t border-slate-800 bg-slate-950/20 p-3 space-y-2">
+                            <div className="border-t border-slate-800 bg-slate-950/40 p-4 space-y-3">
                                 {visibleItems.map((item) => {
                                     const showDetails = expandedLearnMoreItems.has(item.id);
                                     const locked = isLocked(item);
                                     const done = item.status === 'completed';
                                     const startDay = itemStartDays[item.id] || 1;
-                                    const dayLabel = `Start Day ${startDay}`;
+                                    const dayLabel = `Day ${startDay}`;
 
                                     return (
-                                        <div key={item.id} className={`rounded-xl border transition-all overflow-hidden ${done ? 'bg-slate-900/50 border-slate-800/50 opacity-60' : locked ? 'bg-slate-950 border-slate-800 grayscale' : 'bg-slate-800/30 border-slate-700/50 hover:border-indigo-500/30'}`}>
-                                            <div className="flex items-center gap-4 p-3">
-                                                <button onClick={() => !locked && handleTaskClick(item)} disabled={locked || done} className={`shrink-0 ${locked ? 'cursor-not-allowed opacity-30' : 'hover:scale-110 transition-transform'}`}>
-                                                    {done ? <CheckCircle2 className="h-6 w-6 text-emerald-500" /> : locked ? <Lock className="h-5 w-5 text-slate-700" /> : <Circle className="h-6 w-6 text-slate-600" />}
+                                        <div key={item.id} className={`rounded-2xl border transition-all overflow-hidden ${done ? 'bg-slate-900/40 border-slate-800/40' : locked ? 'bg-slate-950 border-slate-800/50 grayscale' : 'bg-slate-800/40 border-slate-700/60 hover:border-indigo-500/40 hover:bg-slate-800/60'}`}>
+                                            <div className="flex items-center gap-4 p-4">
+                                                <button onClick={() => !locked && handleTaskClick(item)} disabled={locked || done} className={`shrink-0 transition-all ${locked ? 'cursor-not-allowed opacity-30' : 'hover:scale-110 active:scale-95'}`}>
+                                                    {done ? <div className="p-1 bg-emerald-500/20 rounded-lg"><CheckCircle2 className="h-6 w-6 text-emerald-400" /></div> : locked ? <Lock className="h-6 w-6 text-slate-700" /> : <Circle className="h-6 w-6 text-slate-500" />}
                                                 </button>
-                                                <div className={`flex-1 min-w-0 ${locked ? 'opacity-40' : 'cursor-pointer'}`} onClick={() => !locked && handleTaskClick(item)}>
-                                                    <div className="flex items-center gap-2 mb-0.5">
-                                                        <span className="text-[10px] font-black text-indigo-500 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20 uppercase tracking-tighter shrink-0">{dayLabel}</span>
-                                                        <span className={`font-bold text-sm truncate ${done ? 'line-through text-slate-500' : 'text-slate-300'}`}>{item.title}</span>
+                                                <div className={`flex-1 min-w-0 flex flex-col gap-1 ${locked ? 'opacity-40' : 'cursor-pointer'}`} onClick={() => !locked && handleTaskClick(item)}>
+                                                    <div className="flex items-center flex-wrap gap-2">
+                                                        <span className="text-[9px] font-black text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20 uppercase tracking-widest shrink-0 shadow-sm">{dayLabel}</span>
+                                                        <span className={`flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg border ${
+                                                            item.type === 'project' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' :
+                                                            item.type === 'certificate' ? 'bg-purple-500/10 border-purple-500/20 text-purple-400' :
+                                                            item.type === 'internship' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' :
+                                                            'bg-slate-500/10 border-slate-500/20 text-slate-400'
+                                                        }`}>
+                                                            {getItemIcon(item.type)} {item.type}
+                                                        </span>
+                                                        <span className={`font-bold text-sm md:text-base tracking-tight leading-none ${done ? 'line-through text-slate-500' : 'text-slate-100'}`}>
+                                                            {item.title}
+                                                        </span>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-[10px] text-slate-500 uppercase font-bold">{item.duration}</span>
-                                                        <span className="w-1 h-1 bg-slate-700 rounded-full"></span>
-                                                        <p className="text-[10px] text-slate-500 line-clamp-1">{item.description}</p>
-                                                    </div>
+                                                    <p className={`text-xs ${done ? 'text-slate-600' : 'text-slate-400'} line-clamp-1 font-medium`}>
+                                                        {item.description}
+                                                    </p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <button onClick={(e) => toggleLearnMore(e, item)} className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-colors ${showDetails ? 'bg-indigo-500/10 border-indigo-500/50 text-indigo-400' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-white'}`}>Details</button>
+                                                    <button onClick={(e) => toggleLearnMore(e, item)} className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${showDetails ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-600'}`}>
+                                                        {showDetails ? 'Close' : 'View'}
+                                                    </button>
                                                 </div>
                                             </div>
                                             {showDetails && (
-                                                <div className="border-t border-slate-800 bg-slate-950/40 p-4 space-y-4 animate-fade-in text-xs">
-                                                    {locked && <div className="p-2 bg-red-500/5 border border-red-500/20 rounded-lg text-red-400 font-medium flex items-center gap-2 mb-2"><Lock className="h-3 w-3" /> Complete the previous day to unlock this task.</div>}
-                                                    {item.explanation && <div className="text-slate-300 border-l-2 border-indigo-500/50 pl-3"><h4 className="font-bold text-indigo-400 uppercase tracking-widest text-[9px] mb-1">Architect's Note</h4>{item.explanation}</div>}
+                                                <div className="border-t border-slate-800 bg-slate-900/20 p-5 space-y-6 animate-fade-in text-sm relative">
+                                                    {locked && <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 font-bold text-xs flex items-center gap-3 mb-4 shadow-inner"><Lock className="h-4 w-4" /> Prerequisite required. Complete previous day.</div>}
+                                                    
+                                                    {item.explanation && (
+                                                        <div className="relative">
+                                                            <div className="flex items-center gap-2 mb-3">
+                                                                <div className="h-px flex-1 bg-gradient-to-r from-indigo-500/50 to-transparent"></div>
+                                                                <h4 className="font-black text-indigo-400 uppercase tracking-widest text-[10px]">Architect's Briefing</h4>
+                                                                <div className="h-px flex-1 bg-gradient-to-l from-indigo-500/50 to-transparent"></div>
+                                                            </div>
+                                                            <p className="text-slate-300 leading-relaxed font-medium bg-slate-950/30 p-4 rounded-2xl border border-white/5 shadow-inner">
+                                                                {item.explanation}
+                                                            </p>
+                                                        </div>
+                                                    )}
+
                                                     {Array.isArray(item.suggestedResources) && item.suggestedResources.length > 0 && (
                                                         <div>
-                                                            <h4 className="font-bold text-slate-500 uppercase tracking-widest text-[9px] mb-2 flex items-center gap-1"><Youtube className="h-3 w-3 text-red-500" /> Recommended Learning</h4>
-                                                            <div className="grid gap-2 sm:grid-cols-2">
+                                                            <div className="flex items-center gap-2 mb-4">
+                                                                <div className="h-px flex-1 bg-gradient-to-r from-red-500/50 to-transparent"></div>
+                                                                <h4 className="font-black text-slate-400 uppercase tracking-widest text-[10px] flex items-center gap-2">
+                                                                    <PlayCircle className="h-3 w-3 text-red-500" /> Learning Assets
+                                                                </h4>
+                                                                <div className="h-px flex-1 bg-gradient-to-l from-red-500/50 to-transparent"></div>
+                                                            </div>
+                                                            <div className="grid gap-3 sm:grid-cols-2">
                                                                 {item.suggestedResources.map((res, idx) => (
-                                                                    <a key={idx} href={res.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-2 rounded-lg bg-slate-900 border border-slate-800 hover:bg-slate-800 transition-colors truncate">
-                                                                        <PlayCircle className="h-3 w-3 text-red-500" /><span className="truncate">{res.title}</span>
+                                                                    <a key={idx} href={res.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 rounded-2xl bg-slate-950/50 border border-slate-800 hover:border-red-500/30 hover:bg-slate-900 transition-all group overflow-hidden relative">
+                                                                        <div className="absolute top-0 left-0 w-1 h-full bg-red-500/50 transform -translate-x-full group-hover:translate-x-0 transition-transform"></div>
+                                                                        <div className="p-2 bg-red-500/10 rounded-xl group-hover:bg-red-500/20 transition-colors">
+                                                                            <Youtube className="h-4 w-4 text-red-500" />
+                                                                        </div>
+                                                                        <div className="flex flex-col min-w-0">
+                                                                            <span className="text-xs font-black text-white truncate group-hover:text-red-300 transition-colors">{res.title}</span>
+                                                                            <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Source Material</span>
+                                                                        </div>
+                                                                        <ExternalLink className="h-3 w-3 text-slate-700 ml-auto group-hover:text-slate-400 transition-colors" />
                                                                     </a>
                                                                 ))}
                                                             </div>

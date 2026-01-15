@@ -5,13 +5,6 @@ const cleanJsonString = (str: string): string => {
   return str.replace(/```json\n?|```/g, "").trim();
 };
 
-const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, fallbackValue: T): Promise<T> => {
-  return Promise.race([
-    promise,
-    new Promise<T>((resolve) => setTimeout(() => resolve(fallbackValue), timeoutMs))
-  ]);
-};
-
 const getAI = () => {
   try {
     if (!process.env.API_KEY) throw new Error("Missing API Key");
@@ -23,9 +16,9 @@ const getAI = () => {
 };
 
 const NOVA_PERSONA = `
-  You are "Nova", a world-class AI Career Architect. 
+  You are "Nova", a world-class AI Career Architect and Psychologist. 
   Your personality is futuristic, encouraging, analytical, and structured. 
-  You provide high-fidelity professional guidance.
+  You use industry data and psychological profiling to architect careers.
 `;
 
 export const analyzeInterests = async (
@@ -48,9 +41,10 @@ export const analyzeInterests = async (
     ${exclusionContext}
 
     STRICT TASK:
-    Provide the top 3 most scientifically aligned career paths for this user. 
-    Calculate a fitScore (0-100) based on their logic, learning style, and motivation.
-    Provide a professional reason for each match.
+    Perform a multi-dimensional analysis (Skills, Interests, Personality, Market Demand).
+    Provide the top 3 most scientifically aligned career paths. 
+    Calculate a fitScore (0-100) using a weighted algorithm.
+    Provide a deeply analytical "reason" for each match.
 
     Return JSON array: [{id, title, description, fitScore, reason}]
   `;
@@ -79,7 +73,7 @@ export const searchCareers = async (query: string): Promise<CareerOption[]> => {
     ${NOVA_PERSONA}
     The user is searching for: "${query}".
     Provide exactly 3 professional variations or specializations related to this search.
-    Include a realistic fitScore (100 for the exact match, slightly less for variants).
+    Include a high-fidelity fitScore and analytical reasoning.
     Return JSON array: [{id, title, description, fitScore, reason}]
   `;
 
@@ -117,27 +111,33 @@ export const generateRoadmap = async (
     }
   }
 
-  // Use higher granularity for long timelines to avoid exceeding context while filling the days
-  const isLongTerm = totalDays > 60;
-  const durationType = isLongTerm ? "blocks like '1 week', '10 days', or '2 weeks'" : "'1 day'";
-
   const prompt = `
       ${NOVA_PERSONA}
-      Create a comprehensive professional roadmap for: "${careerTitle}".
-      Duration: ${totalDays} Days. Level: ${expLevel}. Focus: "${focusAreas}".
+      Architect a professional roadmap for: "${careerTitle}".
+      Total Duration to Cover: ${totalDays} Days. Experience Level: ${expLevel}.
+      Additional Focus: "${focusAreas}".
       
       STRICT ARCHITECTURAL RULES:
-      1. You MUST generate a sequence of phases and tasks that fill the ENTIRE ${totalDays} day period.
-      2. For each task, assign a "duration" as a string (e.g. "1 day", "1 week", "10 days").
-      3. The SUM of all durations across all tasks MUST equal exactly ${totalDays} days.
-      4. If the duration is long (e.g. 300+ days), use larger task blocks (1-2 weeks each) to cover the time.
-      5. Each task MUST have:
-         - "title": Clear, professional task name
-         - "duration": String
-         - "explanation": Detailed guidance on what to achieve.
-         - "suggestedResources": Array of {title, url}.
+      1. Every task is essentially a 1-day milestone.
+      2. You MUST include these four types of items:
+         - "skill": Learning core concepts or technical topics.
+         - "project": Building something practical (MVPs, features, full projects).
+         - "certificate": Working towards or achieving a recognized certification.
+         - "internship": Steps for internship hunting, resume building, or simulated workplace tasks.
+      3. For a ${totalDays} day timeline, provide at least ${Math.min(50, totalDays)} discrete daily tasks.
+      4. Each task item MUST have:
+         {
+           "title": "Clear and descriptive task name",
+           "description": "Short summary",
+           "type": "skill" | "project" | "certificate" | "internship",
+           "importance": "high" | "medium" | "low",
+           "explanation": "Deep professional guidance",
+           "suggestedResources": [{"title": "Name", "url": "URL"}]
+         }
+      5. Resources must be specific (e.g., FreeCodeCamp, Coursera, official MDN, YouTube).
       
-      Output JSON format: [{ phaseName: string, items: RoadmapItem[] }]
+      Organize into logical "Phases". Ensure the "title" is always present.
+      Output JSON format: [{ "phaseName": "Phase Title", "items": [...] }]
     `;
 
   try {
@@ -158,7 +158,8 @@ export const generateRoadmap = async (
         ...item,
         id: `task-${generationId}-${pIdx}-${taskIdCounter++}`,
         status: 'pending',
-        duration: item.duration || (isLongTerm ? '1 week' : '1 day'),
+        duration: '1 day',
+        type: item.type || 'skill',
         suggestedResources: Array.isArray(item.suggestedResources) ? item.suggestedResources : []
       }))
     }));
@@ -174,17 +175,15 @@ export const generatePracticeDataBatch = async (careerTitle: string): Promise<an
   
   const prompt = `
     ${NOVA_PERSONA}
-    Generate a high-volume professional practice set for: "${careerTitle}".
+    Generate a massive, high-fidelity practice and interview set for: "${careerTitle}".
     
     REQUIREMENTS:
-    1. List 10 specific core sub-topics.
-    2. Generate 30 MCQs across different difficulty levels (Beginner to Expert).
-    3. Generate 10 interview questions for each of these: "Google", "Amazon", "Microsoft", "Startups".
+    1. List 10 specific technical sub-topics.
+    2. Generate 40 MCQs across all levels. Format: {id, question, options[4], correctIndex, explanation, topic}.
+    3. Generate 10 interview questions for EACH of these categories: "Google", "Amazon", "Microsoft", "Startups". 
+       Total of 40 interview questions. Format: {id, question, answer, explanation, company}.
     
-    Each MCQ must have: {id, question, options[4], correctIndex, explanation, topic}.
-    Each Interview Question must have: {id, question, answer, explanation, company}.
-
-    Return exactly ONE JSON object: { "topics": [...], "questions": [...], "interviews": { "Google": [...], "Amazon": [...], ... } }
+    Return exactly ONE JSON object: { "topics": [...], "questions": [...], "interviews": { "Google": [...], "Amazon": [...], "Microsoft": [...], "Startups": [...] } }
   `;
 
   try {
@@ -201,14 +200,6 @@ export const generatePracticeDataBatch = async (careerTitle: string): Promise<an
   }
 };
 
-const parseDurationInDays = (durationStr: string): number => {
-  const str = durationStr.toLowerCase();
-  const num = parseInt(str) || 1;
-  if (str.includes('week')) return num * 7;
-  if (str.includes('month')) return num * 30;
-  return num;
-};
-
 export const calculateRemainingDays = (roadmap: RoadmapPhase[]): number => {
   if (!roadmap) return 0;
   let totalDays = 0;
@@ -216,7 +207,7 @@ export const calculateRemainingDays = (roadmap: RoadmapPhase[]): number => {
     if (p.items) {
       p.items.forEach(i => {
         if (i.status !== 'completed') {
-          totalDays += parseDurationInDays(i.duration);
+          totalDays += 1;
         }
       });
     }
