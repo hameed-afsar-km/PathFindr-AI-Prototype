@@ -355,7 +355,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const filteredInterviewQuestions = useMemo(() => {
       let bank: InterviewQuestion[] = [];
       if (companyFilter === 'All') {
-          bank = Object.values(interviewQuestionBank).flat();
+          // Fix: Explicitly typing reduction and concatenation to avoid unknown inference issues
+          bank = Object.keys(interviewQuestionBank).reduce((acc: InterviewQuestion[], key: string) => {
+              const currentList = interviewQuestionBank[key];
+              return acc.concat(Array.isArray(currentList) ? currentList : []);
+          }, [] as InterviewQuestion[]);
       } else {
           bank = interviewQuestionBank[companyFilter] || [];
       }
@@ -363,7 +367,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       if (!practiceSearch.trim()) return bank;
       
       const q = practiceSearch.toLowerCase();
-      return bank.filter(iq => iq.question.toLowerCase().includes(q) || iq.answer.toLowerCase().includes(q));
+      return bank.filter(iq => iq.question.toLowerCase().includes(q) || (iq.answer && iq.answer.toLowerCase().includes(q)));
   }, [interviewQuestionBank, companyFilter, practiceSearch]);
 
   // Practice bank initialization strictly checks cache first (AI Once rule)
@@ -384,7 +388,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   const data = await generatePracticeDataBatch(career.title);
                   setPracticeTopics(data.topics || []); 
                   setPracticeQuestionBank(data.questions || []); 
-                  setInterviewQuestionBank(data.interviews || {}); 
+                  setInterviewQuestionBank(data.interviews || ({} as Record<string, InterviewQuestion[]>)); 
                   savePracticeData(user.id, career.id, data); 
               } catch(e) { console.error("Failed to init practice bank", e); } 
               setIsPracticeLoading(false); 

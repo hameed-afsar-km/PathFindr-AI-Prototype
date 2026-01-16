@@ -2,7 +2,33 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { CareerOption, RoadmapPhase, NewsItem, RoadmapItem, SkillQuestion, DailyQuizItem, InterviewQuestion, PracticeQuestion, SimulationScenario, ChatMessage, RoadmapData } from '../types';
 
 const cleanJsonString = (str: string): string => {
-  return str.replace(/```json\n?|```/g, "").trim();
+  // Remove markdown code blocks if present
+  let cleaned = str.replace(/```json\n?|```/g, "").trim();
+  
+  // Find the actual boundaries of the JSON object/array to ignore surrounding text
+  const startBrace = cleaned.indexOf('{');
+  const startBracket = cleaned.indexOf('[');
+  let startIndex = -1;
+  
+  if (startBrace !== -1 && startBracket !== -1) {
+    startIndex = Math.min(startBrace, startBracket);
+  } else {
+    startIndex = Math.max(startBrace, startBracket);
+  }
+
+  if (startIndex !== -1) {
+    const lastBrace = cleaned.lastIndexOf('}');
+    const lastBracket = cleaned.lastIndexOf(']');
+    const endIndex = Math.max(lastBrace, lastBracket);
+    if (endIndex !== -1 && endIndex > startIndex) {
+        cleaned = cleaned.substring(startIndex, endIndex + 1);
+    }
+  }
+
+  // Fix trailing commas before closing braces or brackets
+  cleaned = cleaned.replace(/,\s*([\]}])/g, "$1");
+  
+  return cleaned;
 };
 
 const getAI = () => {
@@ -189,20 +215,41 @@ export const generatePracticeDataBatch = async (careerTitle: string): Promise<an
     
     REQUIREMENTS:
     1. List 12 specific technical sub-topics for this career.
-    2. Generate 50 high-quality technical MCQs across all levels (Easy, Medium, Hard). Format: {id, question, options[4], correctIndex, explanation, topic}.
-    3. Generate 12 interview questions for EACH of these categories: "Google", "Amazon", "Microsoft", "Netflix", "Meta", "Startups". 
-       Total of 72 distinct interview questions. Format: {id, question, answer, explanation, company}.
+    2. Generate exactly 50 high-quality technical MCQs (Questions). Distribute them across the 12 topics. Format: {id, question, options[4], correctIndex, explanation, topic}.
+    3. Generate exactly 50 highly targeted interview questions. You MUST tag them by company.
+       Distribution:
+       - Google: 8 questions (focus on algorithms/scale)
+       - Amazon: 8 questions (focus on leadership/LP)
+       - Microsoft: 8 questions (focus on engineering excellence)
+       - Meta: 8 questions (focus on product/impact)
+       - Netflix: 8 questions (focus on culture/efficiency)
+       - Startups: 10 questions (focus on versatility/speed)
+       Format: {id, question, answer, explanation, company}.
     
-    Return exactly ONE JSON object: { "topics": [...], "questions": [...], "interviews": { "Google": [...], "Amazon": [...], "Microsoft": [...], "Netflix": [...], "Meta": [...], "Startups": [...] } }
+    CRITICAL: Ensure "company" tag is exactly one of: "Google", "Amazon", "Microsoft", "Meta", "Netflix", "Startups".
+    Ensure JSON is valid, escaped, and complete. 
+    Return exactly ONE JSON object: { "topics": [...], "questions": [...], "interviews": { "Google": [...], "Amazon": [...], "Microsoft": [...], "Meta": [...], "Netflix": [...], "Startups": [...] } }
   `;
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
       contents: prompt,
-      config: { responseMimeType: "application/json" }
+      config: { 
+        responseMimeType: "application/json"
+      }
     });
-    const data = JSON.parse(cleanJsonString(response.text || '{}'));
+    
+    const rawText = response.text || '{}';
+    const cleanedText = cleanJsonString(rawText);
+    const data = JSON.parse(cleanedText);
+    
+    const companies = ["Google", "Amazon", "Microsoft", "Meta", "Netflix", "Startups"];
+    if (!data.interviews) data.interviews = {};
+    companies.forEach(company => {
+      if (!data.interviews[company]) data.interviews[company] = [];
+    });
+
     return data;
   } catch (e) {
     console.error("Batch generation failed", e);
@@ -255,7 +302,6 @@ export const fetchTechNews = async (topic: string): Promise<NewsItem[]> => {
         }
 
         let cleanTitle = c.web.title;
-        // Aggressive cleaning for technical metadata
         cleanTitle = cleanTitle.replace(/vertexaisearch|internal_id|session_id|google_search_result/gi, "").trim();
         if (cleanTitle.endsWith('-')) cleanTitle = cleanTitle.slice(0, -1).trim();
 
