@@ -151,21 +151,20 @@ export const generateRoadmap = async (
       Additional Focus: "${focusAreas}".
       
       STRICT ARCHITECTURAL RULES:
-      1. Every task is essentially a 1-day milestone.
-      2. Tasks within phases MUST ONLY be of these two types:
+      1. CRITICAL: You MUST generate EXACTLY ${totalDays} items total in the "items" arrays across all phases. Every item represents EXACTLY 1 day.
+      2. If Duration is high (e.g. 200+ days), keep each "description" and "explanation" extremely concise (max 10-15 words) to ensure all ${totalDays} items fit in the response without truncation.
+      3. Do NOT include day ranges in "phaseName" (e.g. use "Advanced Architectures" instead of "Advanced Architectures (Days 100-140)"). The UI handles day counting.
+      4. Tasks within phases MUST ONLY be of these two types:
          - "skill": Learning core concepts or technical topics.
          - "project": Building practical features, MVPs, or scripts.
-      3. DO NOT include "certificate" or "internship" as tasks within the phases. 
-      4. Place industry certifications in "recommendedCertificates" and internships/placements in "recommendedInternships".
       5. The VERY LAST item of the VERY LAST phase MUST be a "Final Capstone Revision & Confidence Project" (type: project). 
-         It must be a comprehensive project that revises previous concepts and builds absolute confidence in the user's ability to enter the industry.
       6. Each task item MUST have:
          {
            "title": "Clear and descriptive task name",
-           "description": "Short summary",
+           "description": "Very short summary",
            "type": "skill" | "project",
            "importance": "high" | "medium" | "low",
-           "explanation": "Deep professional guidance",
+           "explanation": "Brief professional guidance",
            "suggestedResources": [{"title": "Name", "url": "URL"}]
          }
       
