@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { UserProfile, CareerOption, RoadmapPhase, NewsItem, RoadmapItem, DailyQuizItem, InterviewQuestion, PracticeQuestion, SimulationScenario, ChatMessage, RoadmapData } from '../types';
 import { Roadmap } from './Roadmap';
-import { fetchTechNews, generateRoadmap, calculateRemainingDays, generateDailyQuiz, generatePracticeTopics, generatePracticeQuestions, generateCompanyInterviewQuestions, generateSimulationScenario, generateChatResponse, generatePracticeDataBatch, generatePhaseFeedback } from '../services/gemini';
+import { fetchTechNews, generateRoadmap, calculateRemainingDays, generateDailyQuiz, generatePracticeTopics, generatePracticeQuestions, generateCompanyInterviewQuestions, generateSimulationScenario, generateChatResponse, generatePracticeDataBatch } from '../services/gemini';
 import { saveRoadmap, saveUser, getRoadmap, getCareerData, saveCareerData, setCurrentUser, getNewsCache, saveNewsCache, getDailyQuizCache, saveDailyQuizCache, deleteUser, getPracticeData, savePracticeData, PracticeDataStore } from '../services/store';
 import { Home, Map, Briefcase, User, LogOut, TrendingUp, PlusCircle, ChevronDown, ChevronUp, Clock, Trophy, AlertCircle, Target, Trash2, RotateCcw, PartyPopper, ArrowRight, Zap, Calendar, ExternalLink, X, RefreshCw, MessageSquare, CheckCircle2, Pencil, BrainCircuit, GraduationCap, Flame, Star, Search, Link, Building2, PlayCircle, Eye, EyeOff, ShieldAlert, Palette, Settings, Mail, Lock, CalendarDays, AlertTriangle, Moon, Sun, Send, Cpu, Sparkles, Compass, LayoutDashboard, BookOpen, Info } from 'lucide-react';
 
@@ -155,15 +155,16 @@ const PhaseFeedbackModal = ({ phaseName, feedback, onRedesign, onClose }: { phas
                     </div>
                 </div>
                 <div className="bg-slate-950/60 p-6 rounded-3xl border border-slate-800 mb-8">
-                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">Architect's Feedback</h4>
-                    <p className="text-slate-200 leading-relaxed italic text-sm">"{feedback}"</p>
+                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">Milestone Summary</h4>
+                    <p className="text-slate-200 leading-relaxed text-sm">{feedback}</p>
+                    <p className="text-slate-400 mt-4 text-xs font-medium">Nova recommends assessing your goals: Would you like to redesign your remaining path for better alignment?</p>
                 </div>
                 <div className="space-y-3">
                     <button onClick={onRedesign} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black uppercase tracking-widest rounded-2xl transition-all shadow-lg shadow-indigo-900/20 flex items-center justify-center gap-2">
                         <RefreshCw className="h-5 w-5" /> Redesign Remaining Path
                     </button>
                     <button onClick={onClose} className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-slate-400 font-black uppercase tracking-widest rounded-2xl transition-all">
-                        Proceed with Current Flow
+                        Keep Current Roadmap
                     </button>
                 </div>
             </div>
@@ -695,18 +696,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
               setShowConfetti(true);
               setTimeout(() => setShowConfetti(false), 3000);
               
-              // New Phase Feedback Logic
-              try {
-                  const feedback = await generatePhaseFeedback(phase.phaseName, phase.items, career.title);
-                  setPhaseFeedback({ phaseName: phase.phaseName, feedback });
-              } catch (e) {
-                  console.error("Feedback generation failed", e);
-              }
-              
               const currentWorkDaysLeft = calculateRemainingDays(newRoadmap.phases);
               const currentCalendarDaysLeft = getCalendarDaysRemaining(); 
               const rawDiff = currentCalendarDaysLeft - currentWorkDaysLeft;
               const diff = rawDiff > 0 ? rawDiff - 1 : rawDiff;
+
+              // Generate local mini-summary feedback
+              const completedCount = phase.items.length;
+              const skills = phase.items.filter(i => i.type === 'skill').map(i => i.title).slice(0, 2);
+              const projects = phase.items.filter(i => i.type === 'project').map(i => i.title).slice(0, 1);
+              const performance = diff > 0 ? "You're operating at high velocity, staying ahead of schedule." : diff < 0 ? "You're taking a deep, thorough approach, which is slightly behind the initial timeline." : "You're maintaining a steady, consistent pace.";
+              
+              const feedbackStr = `You've successfully mastered ${completedCount} key milestones in ${phase.phaseName}. You covered critical topics like ${skills.join(', ')}${projects.length > 0 ? ` and built ${projects[0]}` : ''}. ${performance}`;
+              
+              setPhaseFeedback({ phaseName: phase.phaseName, feedback: feedbackStr });
               
               if (diff > 0) setPhaseAdaptationState({ status: 'ahead', diff, phaseIndex: phaseIndexToCheck });
               else if (diff < 0) setPhaseAdaptationState({ status: 'behind', diff: Math.abs(diff), phaseIndex: phaseIndexToCheck });

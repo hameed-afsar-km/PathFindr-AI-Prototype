@@ -222,7 +222,7 @@ export const Roadmap: React.FC<RoadmapProps> = ({
                             {pacing.message}
                         </div>
                         <div className="h-4 w-px bg-slate-800"></div>
-                        <span className="text-sm font-semibold text-slate-400">{daysRemaining} Daily Tasks Left</span>
+                        <span className="text-sm font-semibold text-slate-400">{daysRemaining} Days Left</span>
                     </div>
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto">
@@ -399,7 +399,7 @@ export const Roadmap: React.FC<RoadmapProps> = ({
                                                     <button onClick={(e) => toggleLearnMore(e, item)} className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
                                                         showDetails ? (isFinalItemOfPath ? 'bg-amber-600 border-amber-600 text-white' : 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-900/20') : 
                                                         'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-600'}`}>
-                                                        {showDetails ? 'Close' : 'Details'}
+                                                        {showDetails ? 'Close' : 'View'}
                                                     </button>
                                                 </div>
                                             </div>
