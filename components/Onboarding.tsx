@@ -514,7 +514,13 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isNewUser = 
                      <div className="animate-fade-in">
                         <div className="flex justify-between items-center mb-8">
                             <span className="text-slate-500 text-sm font-bold uppercase tracking-wider">Skill Calibration</span>
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold capitalize border ${skillQuestions[currentSkillQIndex].difficulty === 'beginner' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : skillQuestions[currentSkillQIndex].difficulty === 'intermediate' ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold capitalize border ${
+                                skillQuestions[currentSkillQIndex].difficulty?.toLowerCase() === 'beginner' 
+                                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                                  : skillQuestions[currentSkillQIndex].difficulty?.toLowerCase() === 'intermediate' 
+                                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' 
+                                    : 'bg-red-500/10 border-red-500/30 text-red-400'
+                            }`}>
                                 {skillQuestions[currentSkillQIndex].difficulty} Level
                             </span>
                         </div>

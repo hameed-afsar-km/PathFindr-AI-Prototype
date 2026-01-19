@@ -208,7 +208,7 @@ export const Roadmap: React.FC<RoadmapProps> = ({
 
       {resetIntent && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
-            <div className="bg-slate-900 border border-red-500/30 rounded-3xl p-6 max-sm w-full shadow-2xl">
+            <div className="bg-slate-900 border border-red-500/30 rounded-3xl p-6 max-w-sm w-full shadow-2xl">
                 <h3 className="text-lg font-bold text-white mb-2">Reset Progress?</h3>
                 <p className="text-slate-400 text-sm mb-4">{resetIntent.type === 'all' ? "Wipe ALL progress for this path? Type RESET below." : "Reset this phase?"}</p>
                 {resetIntent.type === 'all' && (
@@ -226,7 +226,7 @@ export const Roadmap: React.FC<RoadmapProps> = ({
         
         {/* CURRENT OBJECTIVE HERO */}
         {currentTask && (
-            <div className="relative group overflow-hidden rounded-[2rem] border border-indigo-500/30 bg-indigo-950/20 shadow-2xl shadow-indigo-900/10">
+            <div className="relative group overflow-hidden rounded-[2.5rem] border border-indigo-500/30 bg-indigo-950/20 shadow-2xl shadow-indigo-900/10">
                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-transparent opacity-50"></div>
                 <div className="relative p-6 md:p-10 flex flex-col md:flex-row items-center gap-8">
                     <div className="shrink-0 flex flex-col items-center">
@@ -377,7 +377,7 @@ export const Roadmap: React.FC<RoadmapProps> = ({
                         </div>
                         <div>
                             <h3 className="text-xl font-black text-white leading-none">Certifications</h3>
-                            <p className="text-[10px] text-slate-500 mt-1 font-bold uppercase tracking-wider">Expert-curated global credentials</p>
+                            <p className="text-[10px] text-slate-500 mt-1 font-bold uppercase tracking-wider">Expert-curated credentials</p>
                         </div>
                     </div>
                     <div className="space-y-3">
@@ -406,7 +406,7 @@ export const Roadmap: React.FC<RoadmapProps> = ({
                         </div>
                         <div>
                             <h3 className="text-xl font-black text-white leading-none">Industry Placements</h3>
-                            <p className="text-[10px] text-slate-500 mt-1 font-bold uppercase tracking-wider">Targeted Internship opportunities</p>
+                            <p className="text-[10px] text-slate-500 mt-1 font-bold uppercase tracking-wider">Verified career opportunities</p>
                         </div>
                     </div>
                     <div className="space-y-3">

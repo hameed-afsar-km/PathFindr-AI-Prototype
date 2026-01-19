@@ -152,16 +152,25 @@ export const generateRoadmap = async (
       
       STRICT ARCHITECTURAL RULES:
       1. CRITICAL: You MUST generate EXACTLY ${totalDays} items total in the "items" arrays across all phases. Every item represents EXACTLY 1 day.
-      2. TASK QUALITY: Each item's "description" must be an informative briefing (25-35 words), explaining exactly WHAT the user will learn/build and WHY it is foundational.
-      3. LEARNING REFERENCES: For EVERY task, provide 2-3 verified, specific learning resources. Use YouTube, official docs, or top-tier blogs.
-      4. LINK VALIDITY: All links for Certificates and Internships MUST be high-quality, non-placeholder URLs from major platforms (e.g., Coursera, edX, LinkedIn, Indeed, Glassdoor, or official corporate careers pages).
+      2. TASK DESCRIPTION QUALITY: Each item's "description" must be an informative briefing (25-35 words), explaining exactly WHAT the user will learn or build and WHY it matters.
+      3. LEARNING REFERENCES: For EVERY task, you MUST provide 2-3 specific "suggestedResources". These MUST be real-world, high-quality learning links (e.g., YouTube, official documentation, or reputable free courses).
+      4. RECOMMENDATION LINK VALIDITY: For Certificates and Internships, you MUST ONLY provide working, verified URLs from major platforms like Coursera, edX, LinkedIn Learning, Indeed, or official career pages (e.g., careers.google.com). NO PLACEHOLDERS.
       5. The VERY LAST item of the VERY LAST phase MUST be a "Final Capstone Revision & Confidence Project" (type: project). 
+      6. Each task item MUST have:
+         {
+           "title": "Clear and descriptive task name",
+           "description": "Deeply informative briefing on the daily goal",
+           "type": "skill" | "project",
+           "importance": "high" | "medium" | "low",
+           "explanation": "Expert guidance on how to master this specific topic",
+           "suggestedResources": [{"title": "Name of Resource", "url": "Direct Working Link"}]
+         }
       
       Output JSON format: 
       {
         "phases": [{ "phaseName": "Phase Title", "items": [...] }],
-        "recommendedCertificates": [{ "title": "Real Certificate Name", "provider": "Coursera/AWS/Google", "url": "VALID_PLATFORM_URL", "relevance": "Why this specific cert?" }],
-        "recommendedInternships": [{ "title": "Role Name", "company": "Real Company or Platform", "url": "VALID_PLATFORM_JOB_BOARD_URL", "description": "Short summary of opportunities" }]
+        "recommendedCertificates": [{ "title": "Cert Name", "provider": "Coursera/AWS/etc", "url": "VALID_URL", "relevance": "Why this cert?" }],
+        "recommendedInternships": [{ "title": "Role Name", "company": "Example Corp", "url": "VALID_URL", "description": "Short summary" }]
       }
     `;
 
