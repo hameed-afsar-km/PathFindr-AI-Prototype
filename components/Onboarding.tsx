@@ -163,16 +163,11 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isNewUser = 
       
       try {
           const questions = await generateSkillQuiz(career.title);
-          if (questions && questions.length > 0) {
-            setSkillQuestions(questions);
-            setQuizStatus('active');
-            setCurrentSkillQIndex(0);
-          } else {
-            // Graceful fallback if AI fails to return questions
-            throw new Error("No questions generated");
-          }
+          setSkillQuestions(questions);
+          setQuizStatus('active');
+          setCurrentSkillQIndex(0);
       } catch (e) {
-          console.warn("Skill quiz generation failed, skipping to manual level selection.", e);
+          console.error("Failed to load quiz", e);
           setDetectedLevel('beginner');
           setUserSelectedLevel('beginner');
           setStep('level_verification');
@@ -429,7 +424,6 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isNewUser = 
                     <div className="text-center animate-pulse">
                         <BrainCircuit className="h-16 w-16 text-indigo-500 mx-auto mb-4" />
                         <h2 className="text-2xl font-bold text-white">Calibrating Expertise...</h2>
-                        <p className="text-slate-400 text-sm mt-2">Nova is assessing your baseline knowledge.</p>
                     </div>
                  )}
                  
@@ -441,7 +435,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isNewUser = 
                         <h2 className="text-2xl font-bold text-white mb-2">Calibration Complete</h2>
                         <p className="text-slate-400 mb-6">I've identified your current knowledge ceiling.</p>
                         <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden mb-2">
-                            <div className="h-full bg-indigo-500" style={{width: `${(currentSkillQIndex / (skillQuestions.length || 5)) * 100}%`}}></div>
+                            <div className="h-full bg-indigo-500" style={{width: `${(currentSkillQIndex / skillQuestions.length) * 100}%`}}></div>
                         </div>
                         <p className="text-xs text-slate-500">Setting appropriate starting level...</p>
                     </div>
