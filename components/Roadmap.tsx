@@ -49,6 +49,10 @@ export const Roadmap: React.FC<RoadmapProps> = ({
   const phases = roadmap?.phases || [];
   const flatRoadmapItems = useMemo(() => phases.flatMap(phase => phase.items || []), [phases]);
 
+  const currentTask = useMemo(() => {
+    return flatRoadmapItems.find(item => item.status === 'pending');
+  }, [flatRoadmapItems]);
+
   const itemStartDays = useMemo(() => {
     const map: Record<string, number> = {};
     flatRoadmapItems.forEach((item, idx) => {
@@ -94,10 +98,21 @@ export const Roadmap: React.FC<RoadmapProps> = ({
   };
 
   const getActiveCareer = () => user.activeCareers.find(c => c.careerId === user.currentCareerId);
-  const getActiveCareerDate = () => getActiveCareer()?.targetCompletionDate || 'N/A';
+  const currentCareer = getActiveCareer();
+  const getActiveCareerDate = () => currentCareer?.targetCompletionDate || 'N/A';
   const getStartDateDisplay = () => {
-      const active = getActiveCareer();
-      return active ? new Date(active.addedAt).toLocaleDateString() : 'N/A';
+      return currentCareer ? new Date(currentCareer.addedAt).toLocaleDateString() : 'N/A';
+  };
+
+  const getCalendarDaysRemaining = () => {
+      if (!currentCareer?.targetCompletionDate) return 0;
+      const parts = currentCareer.targetCompletionDate.split('-');
+      const targetDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
+      const today = new Date();
+      today.setHours(12, 0, 0, 0);
+      const diffTime = targetDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return Math.max(0, diffDays + 1);
   };
 
   const handleResetRequest = () => {
@@ -167,7 +182,9 @@ export const Roadmap: React.FC<RoadmapProps> = ({
   );
 
   const isPaid = user.subscriptionStatus !== 'free';
-  const currentCareer = getActiveCareer();
+  const calendarDaysLeft = getCalendarDaysRemaining();
+  // Ensure we use the actual count of tasks left for the header label
+  const tasksRemainingCount = flatRoadmapItems.filter(it => it.status !== 'completed').length;
 
   return (
     <div className="relative min-h-[80vh] pb-10 w-full overflow-x-hidden">
@@ -206,6 +223,89 @@ export const Roadmap: React.FC<RoadmapProps> = ({
       )}
 
       <div className={`p-4 md:p-6 space-y-6 ${!isPaid ? 'blur-sm select-none h-[80vh] overflow-hidden' : ''}`}>
+        
+        {/* CURRENT OBJECTIVE HERO */}
+        {currentTask && (
+            <div className="relative group overflow-hidden rounded-[2.5rem] border border-indigo-500/30 bg-indigo-950/20 shadow-2xl shadow-indigo-900/10">
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-transparent opacity-50"></div>
+                <div className="relative p-6 md:p-10 flex flex-col md:flex-row items-center gap-8">
+                    <div className="shrink-0 flex flex-col items-center">
+                        <div className="w-20 h-20 md:w-28 md:h-28 rounded-[2rem] bg-indigo-500/20 border-2 border-indigo-500/40 flex items-center justify-center shadow-lg shadow-indigo-500/20 animate-float">
+                            <Compass className="h-10 w-10 md:h-14 md:h-14 text-indigo-400" />
+                        </div>
+                        <div className="mt-4 px-3 py-1 bg-indigo-600 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-white">Next Task</div>
+                    </div>
+                    <div className="flex-1 text-center md:text-left">
+                        <div className="flex flex-wrap justify-center md:justify-start items-center gap-2 mb-3">
+                            <span className="text-[10px] font-black text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-lg uppercase tracking-widest">
+                                Phase {phases.findIndex(p => p.items.some(it => it.id === currentTask.id)) + 1}
+                            </span>
+                            <span className="text-[10px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-lg uppercase tracking-widest">
+                                Day {itemStartDays[currentTask.id]}
+                            </span>
+                        </div>
+                        <h2 className="text-2xl md:text-3xl font-black text-white mb-2 leading-tight tracking-tight">
+                            {currentTask.title}
+                        </h2>
+                        <p className="text-slate-400 text-sm md:text-base leading-relaxed mb-6 max-w-2xl">
+                            {currentTask.description}
+                        </p>
+                        <div className="flex flex-wrap justify-center md:justify-start items-center gap-4">
+                            <button 
+                                onClick={() => handleTaskClick(currentTask)}
+                                className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.02] active:scale-95 flex items-center gap-3 group"
+                            >
+                                <CheckCircle2 className="h-5 w-5" />
+                                Mark Day Complete
+                            </button>
+                            <button 
+                                onClick={(e) => toggleLearnMore(e, currentTask)}
+                                className="px-6 py-3.5 bg-slate-900 border border-slate-700 hover:border-indigo-500 text-slate-400 hover:text-white font-black uppercase tracking-widest rounded-2xl transition-all"
+                            >
+                                {expandedLearnMoreItems.has(currentTask.id) ? 'Hide Briefing' : 'Study Resource'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {expandedLearnMoreItems.has(currentTask.id) && (
+                    <div className="p-8 md:p-12 border-t border-indigo-500/20 bg-indigo-950/40 animate-fade-in">
+                        <div className="grid md:grid-cols-2 gap-10">
+                            <div>
+                                <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                    <TargetIcon className="h-4 w-4" /> Strategic Context
+                                </h4>
+                                <p className="text-slate-300 text-sm leading-relaxed font-medium">
+                                    {currentTask.explanation || "Nova is preparing your contextual analysis. Focus on mastering the current daily objective to build high-velocity momentum."}
+                                </p>
+                            </div>
+                            <div>
+                                <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                    <PlayCircle className="h-4 w-4" /> Critical Assets
+                                </h4>
+                                <div className="space-y-3">
+                                    {Array.isArray(currentTask.suggestedResources) && currentTask.suggestedResources.length > 0 ? (
+                                        currentTask.suggestedResources.map((res, i) => (
+                                            <a key={i} href={res.url} target="_blank" rel="noreferrer" className="flex items-center justify-between p-4 bg-slate-950/50 border border-slate-800 rounded-2xl hover:border-indigo-500 transition-all group/res">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-indigo-500/10 rounded-xl">
+                                                        <Youtube className="h-4 w-4 text-indigo-400" />
+                                                    </div>
+                                                    <span className="text-xs font-bold text-white group-hover/res:text-indigo-400 transition-colors">{res.title}</span>
+                                                </div>
+                                                <ExternalLink className="h-3.5 w-3.5 text-slate-700 group-hover/res:text-slate-400" />
+                                            </a>
+                                        ))
+                                    ) : (
+                                        <p className="text-slate-500 text-xs italic">Nova recommends researching the specific technical title on official platform documentation.</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        )}
+
         <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-800 shadow-xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
             
@@ -222,7 +322,7 @@ export const Roadmap: React.FC<RoadmapProps> = ({
                             {pacing.message}
                         </div>
                         <div className="h-4 w-px bg-slate-800"></div>
-                        <span className="text-sm font-semibold text-slate-400">{daysRemaining} Daily Tasks Left</span>
+                        <span className="text-sm font-semibold text-slate-400">{tasksRemainingCount} Tasks Left</span>
                     </div>
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto">
@@ -238,8 +338,8 @@ export const Roadmap: React.FC<RoadmapProps> = ({
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 relative z-10">
                 <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/50 flex flex-col justify-center text-center backdrop-blur-sm">
-                    <div className="text-2xl font-black text-white">{daysRemaining}</div>
-                    <div className="text-[10px] uppercase text-slate-500 font-black tracking-widest mt-1">Pending</div>
+                    <div className="text-2xl font-black text-white">{calendarDaysLeft}</div>
+                    <div className="text-[10px] uppercase text-slate-500 font-black tracking-widest mt-1">Days Left</div>
                 </div>
                 <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/50 flex flex-col justify-center px-5 backdrop-blur-sm">
                      <div className="flex justify-between items-end mb-2">
@@ -277,7 +377,7 @@ export const Roadmap: React.FC<RoadmapProps> = ({
                         </div>
                         <div>
                             <h3 className="text-xl font-black text-white leading-none">Certifications</h3>
-                            <p className="text-[10px] text-slate-500 mt-1 font-bold uppercase tracking-wider">Expert-curated global credentials</p>
+                            <p className="text-[10px] text-slate-500 mt-1 font-bold uppercase tracking-wider">Expert-curated credentials</p>
                         </div>
                     </div>
                     <div className="space-y-3">
@@ -306,7 +406,7 @@ export const Roadmap: React.FC<RoadmapProps> = ({
                         </div>
                         <div>
                             <h3 className="text-xl font-black text-white leading-none">Industry Placements</h3>
-                            <p className="text-[10px] text-slate-500 mt-1 font-bold uppercase tracking-wider">Targeted Internship opportunities</p>
+                            <p className="text-[10px] text-slate-500 mt-1 font-bold uppercase tracking-wider">Verified career opportunities</p>
                         </div>
                     </div>
                     <div className="space-y-3">

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { CareerOption, SkillQuestion } from '../types';
 import { analyzeInterests, searchCareers, generateSkillQuiz } from '../services/gemini';
-import { Sparkles, CheckCircle, BookOpen, Clock, Target, ChevronRight, ArrowLeft, Search, RefreshCw, BrainCircuit, Lightbulb, UserCheck, AlertCircle, Bot, Plus, Code, Globe, Rocket, Terminal } from 'lucide-react';
+import { Sparkles, CheckCircle, BookOpen, Clock, Target, ChevronRight, ArrowLeft, Search, RefreshCw, BrainCircuit, Lightbulb, UserCheck, AlertCircle, Bot, Plus, Code, Globe, Rocket, Terminal, Briefcase, Calendar } from 'lucide-react';
 
 interface OnboardingProps {
   onComplete: (career: CareerOption, eduYear: string, targetDate: string, expLevel: 'beginner' | 'intermediate' | 'advanced', focusAreas: string) => void;
@@ -32,8 +32,10 @@ const BackgroundIcons = () => (
     </div>
 );
 
+type OnboardingStep = 'intro' | 'psychometric' | 'comment' | 'analysis' | 'selection' | 'skill_quiz' | 'level_verification' | 'status_role' | 'goal_selection' | 'goal_confirmation';
+
 export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isNewUser = true, mode = 'analysis' }) => {
-  const [step, setStep] = useState<'intro' | 'psychometric' | 'comment' | 'analysis' | 'selection' | 'skill_quiz' | 'level_verification' | 'logistics'>(
+  const [step, setStep] = useState<OnboardingStep>(
       isNewUser && mode === 'analysis' ? 'intro' : mode === 'search' ? 'selection' : 'psychometric'
   );
   
@@ -60,8 +62,43 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isNewUser = 
   const [detectedLevel, setDetectedLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner');
   const [userSelectedLevel, setUserSelectedLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner');
   const [focusAreas, setFocusAreas] = useState('');
-  const [eduYear, setEduYear] = useState('');
+  const [statusRole, setStatusRole] = useState('');
+  const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
   const [targetDate, setTargetDate] = useState('');
+
+  // --- CALCULATIONS ---
+
+  const estimatedDays = useMemo(() => {
+    if (!selectedGoal || !userSelectedLevel || !selectedCareer) return 0;
+    
+    // Base days for goals
+    const goalBaseDays: Record<string, number> = {
+      'Basics': 30,
+      'JobReady': 90,
+      'Mastery': 180
+    };
+    
+    if (!goalBaseDays[selectedGoal]) return 0;
+
+    // Multiplier for expertise level
+    const levelMultiplier: Record<string, number> = {
+      'beginner': 1.0,
+      'intermediate': 0.6,
+      'advanced': 0.3
+    };
+
+    // Simple heuristic for career difficulty based on title length or keywords
+    const difficultyMultiplier = selectedCareer.title.length > 20 ? 1.4 : 1.0;
+    
+    return Math.max(7, Math.round(goalBaseDays[selectedGoal] * levelMultiplier[userSelectedLevel] * difficultyMultiplier));
+  }, [selectedGoal, userSelectedLevel, selectedCareer]);
+
+  const calculatedTargetDate = useMemo(() => {
+    if (estimatedDays === 0) return '';
+    const date = new Date();
+    date.setDate(date.getDate() + estimatedDays);
+    return date.toISOString().split('T')[0];
+  }, [estimatedDays]);
 
   // --- HANDLERS ---
 
@@ -86,8 +123,12 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isNewUser = 
         setStep('selection');
     } else if (step === 'level_verification') {
         setStep('selection');
-    } else if (step === 'logistics') {
+    } else if (step === 'status_role') {
         setStep('level_verification');
+    } else if (step === 'goal_selection') {
+        setStep('status_role');
+    } else if (step === 'goal_confirmation') {
+        setStep('goal_selection');
     }
   };
 
@@ -143,6 +184,19 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isNewUser = 
       }
   };
 
+  const handleCareerSearch = async () => {
+      if (!searchQuery.trim()) return;
+      setIsSearching(true);
+      try {
+          const res = await searchCareers(searchQuery.trim());
+          setCareers(res);
+      } catch (e) {
+          console.error(e);
+      } finally {
+          setIsSearching(false);
+      }
+  };
+
   const handleCareerSelect = async (career: CareerOption) => {
       setSelectedCareer(career);
       setStep('skill_quiz');
@@ -150,7 +204,16 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isNewUser = 
       
       try {
           const questions = await generateSkillQuiz(career.title);
-          setSkillQuestions(questions);
+          
+          // Sort questions from beginner to advanced to allow proper calibration progression
+          const difficultyMap: Record<string, number> = { 'beginner': 1, 'intermediate': 2, 'advanced': 3 };
+          const sortedQuestions = [...questions].sort((a, b) => {
+              const levelA = difficultyMap[a.difficulty.toLowerCase()] || 0;
+              const levelB = difficultyMap[b.difficulty.toLowerCase()] || 0;
+              return levelA - levelB;
+          });
+
+          setSkillQuestions(sortedQuestions);
           setQuizStatus('active');
           setCurrentSkillQIndex(0);
       } catch (e) {
@@ -166,6 +229,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isNewUser = 
       
       if (optionIndex !== currentQ.correctIndex) {
           setQuizStatus('failed');
+          // Map calibration failure point to expertise level
           if (currentSkillQIndex <= 1) setDetectedLevel('beginner');
           else if (currentSkillQIndex <= 3) setDetectedLevel('intermediate');
           else setDetectedLevel('advanced');
@@ -188,9 +252,19 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isNewUser = 
       }
   };
 
+  const handleGoalSelect = (goal: string) => {
+    setSelectedGoal(goal);
+    if (goal === 'Custom') {
+      setStep('goal_confirmation');
+    } else {
+      setStep('goal_confirmation');
+    }
+  };
+
   const handleFinalSubmit = () => {
-    if (selectedCareer && eduYear && targetDate) {
-      onComplete(selectedCareer, eduYear, targetDate, userSelectedLevel, focusAreas);
+    const finalDate = selectedGoal === 'Custom' ? targetDate : calculatedTargetDate;
+    if (selectedCareer && statusRole && finalDate) {
+      onComplete(selectedCareer, statusRole, finalDate, userSelectedLevel, focusAreas);
     }
   };
 
@@ -271,7 +345,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isNewUser = 
                               <button 
                                 onClick={() => savePsychAnswer(customAnswer)}
                                 disabled={!customAnswer.trim()}
-                                className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-500 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-50 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                   Confirm
                               </button>
@@ -335,15 +409,12 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isNewUser = 
                             className="bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-3 w-full md:w-64 focus:border-indigo-500 outline-none backdrop-blur-sm"
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleCareerSearch()}
                         />
                         <button 
-                            onClick={async () => {
-                                setIsSearching(true);
-                                const res = await searchCareers(searchQuery);
-                                setCareers(res);
-                                setIsSearching(false);
-                            }}
-                            className="bg-slate-800 px-4 rounded-xl hover:bg-slate-700 text-white"
+                            onClick={handleCareerSearch}
+                            disabled={isSearching || !searchQuery.trim()}
+                            className="bg-slate-800 px-4 rounded-xl hover:bg-slate-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                         >
                             {isSearching ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
                         </button>
@@ -390,12 +461,18 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isNewUser = 
                                 </button>
                             )}
                         </>
-                    ) : !isAnalyzing && (
+                    ) : !isAnalyzing && !isSearching && (
                         <div className="col-span-full py-12 text-center bg-slate-900/50 border border-slate-800 rounded-3xl">
                             <Bot className="h-12 w-12 text-slate-500 mx-auto mb-4" />
                             <h3 className="text-xl font-bold text-white mb-2">No suggestions found</h3>
                             <p className="text-slate-400 mb-6 max-w-sm mx-auto">Nova couldn't find matches for this query. Try a more general term or re-analyze.</p>
                             <button onClick={submitAnalysis} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all">Try Re-Analysis</button>
+                        </div>
+                    )}
+                    {isSearching && (
+                        <div className="col-span-full py-20 flex flex-col items-center justify-center animate-pulse">
+                             <RefreshCw className="h-12 w-12 text-indigo-500 animate-spin mb-4" />
+                             <h3 className="text-xl font-bold text-white">Searching the Industry...</h3>
                         </div>
                     )}
                 </div>
@@ -437,7 +514,13 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isNewUser = 
                      <div className="animate-fade-in">
                         <div className="flex justify-between items-center mb-8">
                             <span className="text-slate-500 text-sm font-bold uppercase tracking-wider">Skill Calibration</span>
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold capitalize border ${skillQuestions[currentSkillQIndex].difficulty === 'beginner' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : skillQuestions[currentSkillQIndex].difficulty === 'intermediate' ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold capitalize border ${
+                                skillQuestions[currentSkillQIndex].difficulty?.toLowerCase() === 'beginner' 
+                                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                                  : skillQuestions[currentSkillQIndex].difficulty?.toLowerCase() === 'intermediate' 
+                                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' 
+                                    : 'bg-red-500/10 border-red-500/30 text-red-400'
+                            }`}>
                                 {skillQuestions[currentSkillQIndex].difficulty} Level
                             </span>
                         </div>
@@ -505,7 +588,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isNewUser = 
                      </div>
 
                      <button 
-                        onClick={() => setStep('logistics')}
+                        onClick={() => setStep('status_role')}
                         className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
                      >
                         Confirm Level <ChevronRight className="h-4 w-4" />
@@ -514,51 +597,130 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, isNewUser = 
              </div>
         )}
 
-        {step === 'logistics' && (
+        {step === 'status_role' && (
           <div className="w-full max-w-lg bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl shadow-2xl p-8 animate-fade-in relative z-10">
-             <button 
-                onClick={() => setStep('level_verification')}
-                className="flex items-center gap-2 text-slate-500 hover:text-white transition-all text-sm mb-6"
-              >
+             <button onClick={handleBack} className="flex items-center gap-2 text-slate-500 hover:text-white transition-all text-sm mb-6">
                 <ArrowLeft className="h-4 w-4" /> Back
               </button>
 
-             <h2 className="text-2xl font-bold text-white mb-6">Final Logistics</h2>
+             <h2 className="text-2xl font-bold text-white mb-6">Current Standing</h2>
              
              <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2 flex items-center gap-2">
-                    <BookOpen className="h-4 w-4 text-indigo-400" /> Current Status / Role
+                    <Briefcase className="h-4 w-4 text-indigo-400" /> Your Current Status / Role
                   </label>
                   <input 
                     type="text" 
                     placeholder="e.g. Final Year Student, Marketing Manager"
                     className="w-full p-4 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
-                    value={eduYear}
-                    onChange={e => setEduYear(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2 flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-indigo-400" /> Target Completion Date
-                  </label>
-                  <input 
-                    type="date" 
-                    className="w-full p-4 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none color-scheme-dark"
-                    value={targetDate}
-                    onChange={e => setTargetDate(e.target.value)}
+                    value={statusRole}
+                    onChange={e => setStatusRole(e.target.value)}
+                    autoFocus
                   />
                 </div>
 
                 <button 
-                  onClick={handleFinalSubmit}
-                  disabled={!eduYear || !targetDate}
-                  className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-900/20 mt-4"
+                  onClick={() => setStep('goal_selection')}
+                  disabled={!statusRole.trim()}
+                  className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-900/20 mt-4 disabled:opacity-50"
                 >
-                  <Target className="h-5 w-5" />
-                  Ask Nova to Generate Roadmap
+                  Define My Goal <ChevronRight className="h-5 w-5" />
                 </button>
+             </div>
+          </div>
+        )}
+
+        {step === 'goal_selection' && (
+          <div className="w-full max-w-2xl animate-fade-in relative z-10 px-4">
+             <button onClick={handleBack} className="flex items-center gap-2 text-slate-500 hover:text-white transition-all text-sm mb-6">
+                <ArrowLeft className="h-4 w-4" /> Back
+              </button>
+
+             <h2 className="text-3xl font-bold text-white mb-2 text-center">What is your objective?</h2>
+             <p className="text-slate-400 mb-8 text-center">Select your desired depth. Nova will estimate the timeline.</p>
+             
+             <div className="grid gap-4">
+                {[
+                  { id: 'Basics', label: 'Learn Basics & Fundamentals', desc: 'Master core concepts and foundational tools.' },
+                  { id: 'JobReady', label: 'Advance To Job Readiness', desc: 'Build technical depth and professional portfolio projects.' },
+                  { id: 'Mastery', label: 'Mastery Expertise', desc: 'Achieve advanced architectural and senior-level proficiency.' },
+                  { id: 'Custom', label: 'Custom Target Completion Date', desc: 'I want to set my own personal deadline.' }
+                ].map((goal) => (
+                    <button 
+                      key={goal.id}
+                      onClick={() => handleGoalSelect(goal.id)}
+                      className="w-full text-left p-6 bg-slate-900/80 border border-slate-800 rounded-2xl hover:border-indigo-500 transition-all group backdrop-blur-sm"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-bold text-white text-lg group-hover:text-indigo-300 transition-colors">{goal.label}</div>
+                          <div className="text-slate-400 text-sm mt-1">{goal.desc}</div>
+                        </div>
+                        <ChevronRight className="h-5 w-5 text-slate-600 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
+                      </div>
+                    </button>
+                ))}
+             </div>
+          </div>
+        )}
+
+        {step === 'goal_confirmation' && (
+          <div className="w-full max-w-lg bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl shadow-2xl p-8 animate-fade-in relative z-10">
+             <button onClick={handleBack} className="flex items-center gap-2 text-slate-500 hover:text-white transition-all text-sm mb-6">
+                <ArrowLeft className="h-4 w-4" /> Change Goal
+              </button>
+
+             <div className="text-center mb-8">
+                <div className="p-4 bg-indigo-500/10 rounded-2xl inline-block mb-4">
+                   {selectedGoal === 'Custom' ? <Calendar className="h-10 w-10 text-indigo-400" /> : <Clock className="h-10 w-10 text-indigo-400" />}
+                </div>
+                <h2 className="text-2xl font-bold text-white">Finalize Roadmap Target</h2>
+                <p className="text-slate-400 mt-2">
+                   {selectedGoal === 'Custom' 
+                     ? 'Please select your specific target date.' 
+                     : `Nova has analyzed your ${userSelectedLevel} expertise and the complexity of ${selectedCareer?.title}.`}
+                </p>
+             </div>
+
+             <div className="space-y-6">
+                {selectedGoal === 'Custom' ? (
+                  <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
+                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Choose Date</label>
+                    <input 
+                      type="date" 
+                      className="w-full bg-transparent text-white font-bold text-lg focus:outline-none color-scheme-dark"
+                      value={targetDate}
+                      onChange={e => setTargetDate(e.target.value)}
+                    />
+                  </div>
+                ) : (
+                  <div className="bg-slate-950/50 p-6 rounded-2xl border border-indigo-500/30 text-center">
+                    <div className="text-xs font-black text-indigo-400 uppercase tracking-[0.2em] mb-2">Estimated Completion</div>
+                    <div className="text-4xl font-black text-white mb-2">{estimatedDays} Days</div>
+                    <div className="text-slate-400 font-medium">{new Date(calculatedTargetDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-3">
+                  <button 
+                    onClick={handleFinalSubmit}
+                    disabled={selectedGoal === 'Custom' ? !targetDate : false}
+                    className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-indigo-900/20 disabled:opacity-50"
+                  >
+                    Finalize & Generate Roadmap
+                  </button>
+                  <button 
+                    onClick={handleBack}
+                    className="w-full py-3 text-slate-500 hover:text-slate-300 font-bold transition-all"
+                  >
+                    Go Back
+                  </button>
+                </div>
+                
+                <p className="text-[10px] text-slate-600 text-center uppercase tracking-widest">
+                   Nova will architect a path with exactly 1 milestone per day.
+                </p>
              </div>
           </div>
         )}

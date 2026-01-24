@@ -98,9 +98,15 @@ export const searchCareers = async (query: string): Promise<CareerOption[]> => {
   const prompt = `
     ${NOVA_PERSONA}
     The user is searching for: "${query}".
-    Provide exactly 3 professional variations or specializations related to this search.
-    Include a high-fidelity fitScore and analytical reasoning.
-    Return JSON array: [{id, title, description, fitScore, reason}]
+
+    STRICT TASK:
+    1. Identify the top 3 professional career paths that most accurately match or relate to this search term.
+    2. The first result MUST be the most direct interpretation of "${query}".
+    3. Calculate a high-fidelity "fitScore" (0-100) based strictly on how well each career matches the search intent.
+    4. Provide a concise description and a professional "reason" for the match.
+    5. Return exactly 3 items.
+
+    Return JSON array: [{"id": "string", "title": "string", "description": "string", "fitScore": number, "reason": "string"}]
   `;
 
   try {
@@ -111,6 +117,7 @@ export const searchCareers = async (query: string): Promise<CareerOption[]> => {
     });
     return JSON.parse(cleanJsonString(response.text || "[]"));
   } catch (e) {
+    console.error("Career search failed:", e);
     return [];
   }
 };
@@ -144,29 +151,26 @@ export const generateRoadmap = async (
       Additional Focus: "${focusAreas}".
       
       STRICT ARCHITECTURAL RULES:
-      1. Every task is essentially a 1-day milestone.
-      2. Tasks within phases MUST ONLY be of these two types:
-         - "skill": Learning core concepts or technical topics.
-         - "project": Building practical features, MVPs, or scripts.
-      3. DO NOT include "certificate" or "internship" as tasks within the phases. 
-      4. Place industry certifications in "recommendedCertificates" and internships/placements in "recommendedInternships".
+      1. CRITICAL: You MUST generate EXACTLY ${totalDays} items total in the "items" arrays across all phases. Every item represents EXACTLY 1 day.
+      2. TASK DESCRIPTION QUALITY: Each item's "description" must be an informative briefing (25-35 words), explaining exactly WHAT the user will learn or build and WHY it matters.
+      3. LEARNING REFERENCES: For EVERY task, you MUST provide 2-3 specific "suggestedResources". These MUST be real-world, high-quality learning links (e.g., YouTube, official documentation, or reputable free courses).
+      4. RECOMMENDATION LINK VALIDITY: For Certificates and Internships, you MUST ONLY provide working, verified URLs from major platforms like Coursera, edX, LinkedIn Learning, Indeed, or official career pages (e.g., careers.google.com). NO PLACEHOLDERS.
       5. The VERY LAST item of the VERY LAST phase MUST be a "Final Capstone Revision & Confidence Project" (type: project). 
-         It must be a comprehensive project that revises previous concepts and builds absolute confidence in the user's ability to enter the industry.
       6. Each task item MUST have:
          {
            "title": "Clear and descriptive task name",
-           "description": "Short summary",
+           "description": "Deeply informative briefing on the daily goal",
            "type": "skill" | "project",
            "importance": "high" | "medium" | "low",
-           "explanation": "Deep professional guidance",
-           "suggestedResources": [{"title": "Name", "url": "URL"}]
+           "explanation": "Expert guidance on how to master this specific topic",
+           "suggestedResources": [{"title": "Name of Resource", "url": "Direct Working Link"}]
          }
       
       Output JSON format: 
       {
         "phases": [{ "phaseName": "Phase Title", "items": [...] }],
-        "recommendedCertificates": [{ "title": "Cert Name", "provider": "Coursera/AWS/etc", "url": "URL", "relevance": "Why this cert?" }],
-        "recommendedInternships": [{ "title": "Role Name", "company": "Example Corp", "url": "URL", "description": "Short summary" }]
+        "recommendedCertificates": [{ "title": "Cert Name", "provider": "Coursera/AWS/etc", "url": "VALID_URL", "relevance": "Why this cert?" }],
+        "recommendedInternships": [{ "title": "Role Name", "company": "Example Corp", "url": "VALID_URL", "description": "Short summary" }]
       }
     `;
 
@@ -278,44 +282,44 @@ export const fetchTechNews = async (topic: string): Promise<NewsItem[]> => {
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Find exactly 10 high-quality, professional news headlines about "${topic}" from industry leaders. Focus on breakthroughs, market shifts, and expert insights.`,
+      contents: `Search for at least 30 the latest professional tech news articles, breakthroughs, job trends, and industry insights about "${topic}". Provide links and diverse sources.`,
       config: { tools: [{ googleSearch: {} }] }
     });
     
-    const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
     const newsItems: NewsItem[] = [];
+    
+    // Improved source collection: extract from groundingMetadata
+    const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
     
     chunks.forEach((c: any) => {
       if (c.web && c.web.uri && c.web.title) {
         let source = 'Insights';
         try {
           const urlObj = new URL(c.web.uri);
-          const hostname = urlObj.hostname.toLowerCase().replace('www.', '');
-          
-          if (hostname.includes('vertexaisearch') || hostname.includes('google.com') || hostname.includes('googleapis')) {
-            source = 'Tech Feed';
-          } else {
-            source = hostname.split('.')[0].toUpperCase();
-          }
+          const hostname = urlObj.hostname.toLowerCase().replace('www.', '').replace('news.', '');
+          source = hostname.split('.')[0].toUpperCase();
+          if (source.length < 2) source = 'TECH';
         } catch (e) {
-          source = 'Verified';
+          source = 'SOURCE';
         }
 
         let cleanTitle = c.web.title;
-        cleanTitle = cleanTitle.replace(/vertexaisearch|internal_id|session_id|google_search_result/gi, "").trim();
+        cleanTitle = cleanTitle.replace(/google search|vertexaisearch|internal_id|session_id|google_search_result/gi, "").trim();
         if (cleanTitle.endsWith('-')) cleanTitle = cleanTitle.slice(0, -1).trim();
 
-        newsItems.push({
-          title: cleanTitle,
-          url: c.web.uri,
-          source: source,
-          summary: '',
-          date: 'Recent'
-        });
+        if (cleanTitle.length > 10 && !newsItems.some(existing => existing.url === c.web.uri)) {
+            newsItems.push({
+              title: cleanTitle,
+              url: c.web.uri,
+              source: source,
+              summary: '',
+              date: 'Recent'
+            });
+        }
       }
     });
 
-    return newsItems.slice(0, 10);
+    return newsItems;
   } catch (e) {
     console.error("News fetch failed", e);
     return [];
@@ -328,11 +332,33 @@ export const generateDailyQuiz = async (careerTitle: string): Promise<DailyQuizI
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Create one technical MCQ for ${careerTitle}. JSON: {question, options[4], correctIndex, explanation}`,
-      config: { responseMimeType: "application/json" }
+      contents: `Create one high-quality technical multiple-choice question for a professional pursuing a career as a ${careerTitle}. 
+      The question should be challenging and industry-relevant.
+      
+      STRICT JSON RESPONSE:
+      {
+        "question": "The text of the question",
+        "options": ["Option A", "Option B", "Option C", "Option D"],
+        "correctIndex": 0,
+        "explanation": "A concise explanation of why the correct option is right"
+      }`,
+      config: { 
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            question: { type: Type.STRING },
+            options: { type: Type.ARRAY, items: { type: Type.STRING } },
+            correctIndex: { type: Type.INTEGER },
+            explanation: { type: Type.STRING }
+          },
+          required: ["question", "options", "correctIndex", "explanation"]
+        }
+      }
     });
     return JSON.parse(cleanJsonString(response.text || 'null'));
   } catch (e) {
+    console.error("Daily quiz generation failed", e);
     return null;
   }
 };
@@ -340,7 +366,9 @@ export const generateDailyQuiz = async (careerTitle: string): Promise<DailyQuizI
 export const generateSkillQuiz = async (careerTitle: string): Promise<SkillQuestion[]> => {
   const ai = getAI();
   if (!ai) return [];
-  const prompt = `${NOVA_PERSONA} Generate a 5-question skill calibration quiz for: ${careerTitle}. JSON: [{id, question, options[], correctIndex, difficulty}].`;
+  const prompt = `${NOVA_PERSONA} Generate a 5-question skill calibration quiz for: ${careerTitle}. 
+  Ensure a range of difficulties: 2 beginner, 2 intermediate, and 1 advanced question.
+  JSON: [{id, question, options[], correctIndex, difficulty}].`;
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -420,16 +448,32 @@ export const generateSimulationScenario = async (careerTitle: string): Promise<S
   }
 };
 
-export const generateChatResponse = async (message: string, careerTitle: string, history: ChatMessage[]): Promise<string> => {
+export const generateChatResponse = async (message: string, careerTitle: string, history: ChatMessage[], context?: string): Promise<string> => {
   const ai = getAI();
   if (!ai) return "I am currently in architect mode (offline).";
+  
+  const systemPrompt = `
+    ${NOVA_PERSONA}
+    You are chatting with a user pursuing a career as a ${careerTitle}.
+    
+    CURRENT CONTEXT:
+    ${context || 'No specific roadmap context provided.'}
+    
+    STRICT FORMATTING & CONTENT RULES:
+    1. EXTREME BREVITY: Provide only the most critical information. Keep responses under 60-80 words.
+    2. SIMPLICITY: Use basic language. No long-winded technical jargon unless requested.
+    3. STRUCTURE: Use "### Heading" for sub-topics, "**text**" for emphasis, and "-" for bullets.
+    4. TASK-AWARENESS: If the user is confused about their task, focus solely on that task using the context provided.
+    5. No unnecessary pleasantries. Get straight to the point.
+  `;
+
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `User: ${message}. Current focus: ${careerTitle}. Context: This is a professional career architect chat. Answer concisely and helpful.`
+      contents: `System: ${systemPrompt}\nUser: ${message}\nHistory: ${JSON.stringify(history.slice(-3))}`,
     });
-    return response.text || "I'm processing that. One moment.";
+    return response.text || "Architect busy. Try later.";
   } catch (e) {
-    return "The architect is busy. Try again soon.";
+    return "Connection error.";
   }
 };
